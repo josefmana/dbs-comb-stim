@@ -21,7 +21,7 @@ sapply( c("figs", "tabs", "sess"), function(i) if( !dir.exists(i) ) dir.create(i
 # ---- counterbalancing ----
 
 # list all counterbalancing conditions w.r.t. the exposure (i.e., frequency manipulation)
-s1 <- c("base/comb", "comb/base") # the first session: base (high-frequency dorsal stimulation only) vs low-frequency stimulation
+s1 <- c("base/comb", "comb/base") # the first session: base (high-frequency dorsal stimulation only) vs combined stimulation
 s2 <- c("base/comb", "comb/base") # the second session: the same conditions as the first session
 int <- c("comb", "base") # the interim, either combined low-ventral and high-dorsal or high-frequency (base) stimulation only
 
@@ -31,6 +31,16 @@ cb.long <- expand.grid( s1, int, s2 ) %>% `colnames<-`( c("session_1", "interim"
 # save as .csv
 write.table( cb.long , file = "tabs/counterbalancing.csv", sep = ",", row.names = F )
 
+
+# ---- trajectories ----
+
+# based on Filip Ruzicka's e-mail from 2023-02-11 (18:39), working on a more complex counterbalancing scheme
+# start by listing all possible combinations for the first session across left/right and base/comb stimulation
+# this one assumes that the patient will be in the interim stimulate by the last mode used in session_1
+traj <- expand.grid( c("left","right"), c("base/comb","comb/base"), c("base/comb","comb/base") ) %>% `colnames<-`( c("side","session_1","session_2") )
+
+# save as .csv
+write.table( traj , file = "tabs/trajectories.csv", sep = ",", row.names = F )
 
 # ---- heuristic causal models (DAGs) ----
 
