@@ -21,9 +21,9 @@ sapply( c("figs", "tabs", "sess"), function(i) if( !dir.exists(i) ) dir.create(i
 # ---- counterbalancing ----
 
 # list all counterbalancing conditions w.r.t. the exposure (i.e., frequency manipulation)
-s1 <- c("base/comb", "comb/base") # the first session: base (high-frequency dorsal stimulation only) vs combined stimulation
-s2 <- c("base/comb", "comb/base") # the second session: the same conditions as the first session
-int <- c("comb", "base") # the interim, either combined low-ventral and high-dorsal or high-frequency (base) stimulation only
+s1 <- c("dorsal/combined", "combined/dorsal") # the first session: base (high-frequency dorsal stimulation only) vs combined stimulation
+s2 <- c("dorsal/combined", "combined/dorsal") # the second session: the same conditions as the first session
+int <- c("combined", "dorsal") # the interim, either combined low-ventral and high-dorsal or high-frequency (base) stimulation only
 
 # generate all counterbalancing conditions across sessions and measurements
 cb.long <- expand.grid( s1, int, s2 ) %>% `colnames<-`( c("session_1", "interim", "session_2") )
@@ -37,10 +37,23 @@ write.table( cb.long , file = "tabs/counterbalancing.csv", sep = ",", row.names 
 # based on Filip Ruzicka's e-mail from 2023-02-11 (18:39), working on a more complex counterbalancing scheme
 # start by listing all possible combinations for the first session across left/right and base/comb stimulation
 # this one assumes that the patient will be in the interim stimulate by the last mode used in session_1
-traj <- expand.grid( c("left","right"), c("base/comb","comb/base"), c("base/comb","comb/base") ) %>% `colnames<-`( c("side","session_1","session_2") )
+traj <- expand.grid( side = c("left","right"),
+                     session_1 = c("dors-comb","comb-dors"),
+                     session_2 = c("dors-comb","comb-dors")
+                     ) %>%
+  mutate( interim = sub( ".*-", "", session_1 ), .before = "session_2" )
 
 # save as .csv
 write.table( traj , file = "tabs/trajectories.csv", sep = ",", row.names = F )
+
+# try another way
+expand.grid( `1a` = c("left","right","base"),
+             `1b/2a` = c("left","right","base"),
+             `2b/3a` = c("left","right","base"),
+             `3b/4a` = c("left","right","base")
+             )  %>%
+  mutate( Var5 = ifelse( `1b/2a` == `2b/3a` | `1b/2a` == `3b/4a` | `2b/3a` == `3b/4a` , NA, 1 ) ) %>%
+  na.omit() %>% `rownames<-`( 1:nrow(.) ) %>% select(-5)
 
 # ---- heuristic causal models (DAGs) ----
 
