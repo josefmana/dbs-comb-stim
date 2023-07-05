@@ -6,7 +6,7 @@ pkgs <- c("rstudioapi", "dplyr", "tidyverse")
 # load or install each of the packages as needed
 for (i in pkgs) {
   if (i %in% rownames (installed.packages()) == F) install.packages(i) # install if it ain't installed yet
-  if ( i %in% names (sessionInfo() $otherPkgs) == F ) library(i, character.only = T ) # load if it ain't loaded yet
+  if (i %in% names (sessionInfo() $otherPkgs) == F) library(i, character.only = T ) # load if it ain't loaded yet
 }
 
 # set working directory (works in RStudio only)
