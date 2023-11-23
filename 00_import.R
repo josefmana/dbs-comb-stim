@@ -62,7 +62,9 @@ d0$cfs <- sapply( 1:nrow(d0), function(i) with( cb, get( paste0("session",d0$ses
 
 # read and wrangle the data
 d1 <-
+  
   with(
+    
     d0,
     lapply(
       
@@ -94,10 +96,49 @@ d1 <-
       
   )
 
-# save this raw numbers-based data set as csv
+# save this as a raw numbers-based data set as csv
 write.table( x = d1, file = "_data/ssrt_raw.csv", sep = ",", row.names = F, quote = F )
 
 
 # ---- tidy labelled data ----
 
+# re-code selected columns
+d2 <- 
+  
+  d1 %>%
+  
+  # add condition label
+  mutate( cond = ifelse( exp == 1, "exp", "ctrl" ), .after = exp ) %>%
+  
+  # transform number variables to labels
+  mutate(
+    
+    stim = case_when( stim == 1 ~ "left", stim == 2 ~ "right" ), # stimulus identity
+    signal = ifelse( signal == 1, "signal", "nosignal" ), # stop-signal presence
+    reqSOA = ifelse( reqSOA == 0, NA, reqSOA ), # required stimulus onset asynchrony
+    
+    # correctness of the response
+    correct = case_when(
+      correct == 4 ~ "correct",
+      correct == 3 ~ "signal-respond",
+      correct == 2 ~ "incorrect",
+      correct == 1 ~ "missed"
+    ),
+    
+    # response recorded
+    across(
+      starts_with("resp"),
+      ~ case_when(
+        .x == 0 ~ NA, # miss
+        .x == 1 ~ "left",
+        .x == 2 ~ "right",
+        .x == 3 ~ "down"
+      )
+    ),
+    
+    across( starts_with("rt"), ~ ifelse( .x == 0, NA, .x )  ) # response times
 
+  )
+
+# save this as a labelled data set as csv
+write.table( x = d2, file = "_data/ssrt_lab.csv", sep = ",", row.names = F, quote = F )
