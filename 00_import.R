@@ -142,3 +142,9 @@ d2 <-
 
 # save this as a labelled data set as csv
 write.table( x = d2, file = "_data/ssrt_lab.csv", sep = ",", row.names = F, quote = F )
+
+
+# SESSION INFO -----
+
+# write the sessionInfo() into a .txt file
+capture.output( sessionInfo(), file = "import_envir.txt" )

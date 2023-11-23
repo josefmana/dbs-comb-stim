@@ -1,0 +1,5 @@
+---
+title: "Data simulations"
+author: "Josef Mana"
+format: html
+---
