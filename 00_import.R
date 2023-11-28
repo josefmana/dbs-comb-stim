@@ -1,5 +1,9 @@
 # This script extracts and formats data from raw tables to analysis-ready outcomes.
 
+# clear the environment
+rm( list = ls() )
+gc()
+
 # list required packages into a character object
 pkgs <- c( "here", "readxl", "janitor", "dplyr", "tidyverse" )
 
