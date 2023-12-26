@@ -63,6 +63,7 @@ all( cb$surname %in% d0$surname ) # TRUE
 d0$cfs <- sapply( 1:nrow(d0), function(i) with( cb, get( paste0("session",d0$session[i] ) )[surname == d0$surname[i] ] ) )
 d0$date <- as.Date( sapply( 1:nrow(d0), function(i) with( cb, datum[surname == d0$surname[i] ] ) ), "%d.%m.%Y" )
 
+
 # SSRT DATA ----
 
 # ---- raw in-numbers data ----
@@ -166,14 +167,14 @@ d3 <-
   # select variables of interest
   select(
     
-    id, dob, sex, # demographic variables
+    id, redcap_event_name, dob, sex, # demographic variables
     type_pd, hy_stage, rok_vzniku_pn, asym_park, # PD-specific variables
     surgery_date, datum_stim, # surgery data
     
     # stimulation data
     datum,
-    dbs_dex, current_right, duration_right, frequency_right, impedance_right, # right side
-    dbs_sin, current_left, duration_left, frequency_left, impedance_left, # left side
+    current_right, duration_right, frequency_right, impedance_right, # right side
+    current_left, duration_left, frequency_left, impedance_left, # left side
     
     # cognition
     
@@ -192,16 +193,37 @@ d3 <-
     
   ) %>%
   
+  # rename some variables
+  rename(
+    
+    # demographics/helpers
+    "event" = "redcap_event_name",
+    "pd_dur" = "rok_vzniku_pn",
+    
+    # date variables
+    "age_years" = "dob",
+    "elsurg_years" = "surgery_date",
+    "stimsurg_years" = "datum_stim",
+    "stim_years" = "datum",
+    "drs_years" = "datum_drs",
+    "neuropsy_years" = "datum_neuropsy_23afdc",
+    
+    # neuropsychology
+    "moca" = "moca_e04359",
+    "nart" = "nart_7fd846",
+    "tol" = "tol_anderson"
+  
+  ) %>%
+  
   # re-code some
   mutate(
     
     # demographics and Parkinson's related variables
+    event = sub( "_arm_1", "", event ) %>% sub( "nvtva_", "", . ) %>% sub( "operace", "surgery", . ),
+    pd_dur = 2023 - pd_dur,
     sex = case_when( sex == 0 ~ "female", sex == 1 ~ "male" ),
     type_pd = case_when( type_pd == 1 ~ "tremordominant", type_pd == 2 ~ "akinetic-rigid" ),
     asym_park = case_when( asym_park == 1 ~ "right", asym_park == 2 ~ "left" ),
-    
-    # dates
-    across( contains("dob") | contains("dat"), ~ as.Date(.x) ),
     
     # stimulation parameters 
     across( contains("impedance"), ~ as.numeric( sub( "ok", NA, .x ) ) ),
@@ -209,18 +231,51 @@ d3 <-
     across( contains("duration"), ~ as.numeric(.x) ),
     across( contains("frequency"), ~ as.numeric(.x) )
 
-  )
+  ) %>%
+  
+  # drop refresh assessments
+  filter( event != "refresh" )
   
 # add time differences
-for ( i in names(d3)[ grepl( "dob|dat", names(d3) ) ] ) {
-  for ( j in 1:nrow(d3) ) {
+for ( i in names(d3)[ grepl( "years", names(d3) ) ] ) {
+
+  d3[ ,i] <-
     
-    d3[ j , paste0(i,"_diff") ] <-
-      
-      time_length( difftime( d0[ with( d0, session == 1 & id == d3$id[j] ), "date" ], d3[ j , i ] ), "years" )
-    
-  }
+    sapply(
+      1:nrow(d3),
+      function(j)
+        time_length( difftime( d0[ with( d0, session == 1 & id == d3$id[j] ), "date" ], as.Date( d3[j,i] ) ), "years" )
+    )
+
 }
+
+# move psot-surgery variables up
+for ( i in unique(d0$id) ) {
+  
+  # move the surgery dates
+  d3[ with( d3, id == i & event == "screening"), c("elsurg_years","stimsurg_years") ] <- 
+    d3[ with( d3, id == i & event == "surgery"), c("elsurg_years","stimsurg_years") ]
+  
+  # move the closest stimulation parameters and post-surgery DRS-2
+  j <- which( with( d3, id == i & abs(stim_years) == min( abs( stim_years[ id == i ] ), na.rm = T ) ) ) # extract row number of the closest stimulation parameters
+  d3[ with( d3, id == i & event == "screening"), 11:19 ] <- d3[ j , 11:19 ]
+  d3[ with( d3, id == i & event == "screening"), c("drs_years_post","drs_post") ] <- d3[ j , c("drs_years","drsii_total") ]
+  
+  # remove post-surgery rows
+  d3 <- d3[ -which( with( d3, id == i & grepl( "surgery|r1|r3", event ) ) ),  ]
+
+}
+
+# finshing touches
+d3 <-
+  
+  d3 %>%
+  select(-event) %>% # drop column with event-name
+  relocate( drs_years_post, .after = drsii_total ) %>% # relocate post-surgery DRS
+  relocate( drs_post, .after = drs_years_post )
+
+# save the descriptive variables
+write.table( x = d3, file = "_data/desc.csv", sep = ",", row.names = F, quote = F )
 
 
 # SESSION INFO -----
