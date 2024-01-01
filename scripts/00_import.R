@@ -33,7 +33,8 @@ d0 <-
   do.call( rbind.data.frame, . ) %>% # create a single data set
   `colnames<-`( c("id","surname","forename","session") ) %>% # label the columns appropriately
   cbind.data.frame( . , path = paths ) %>% # add path information to each patient/session combination
-  mutate( session = as.integer( gsub("\\D","",session) ) ) # change session number to a number
+  mutate( session = as.integer( gsub("\\D","",session) ) ) %>% # change session number to a number
+  mutate( id = sub( "ipn", "IPN", id ) ) # return ids to uppercase
 
 
 # COUNTERBALANCING ----
@@ -161,13 +162,12 @@ d3 <-
   read.csv( here("_raw","demo","redcap_data.csv"), sep = "," ) %>%
   
   # keep only data of included patients
-  mutate( id = tolower(study_id) ) %>%
-  filter( id %in% unique(d0$id) ) %>%
+  filter( study_id %in% unique(d0$id) ) %>%
   
   # select variables of interest
   select(
     
-    id, redcap_event_name, dob, sex, # demographic variables
+    study_id, redcap_event_name, dob, sex, # demographic variables
     type_pd, hy_stage, rok_vzniku_pn, asym_park, # PD-specific variables
     surgery_date, datum_stim, # surgery data
     
@@ -197,6 +197,7 @@ d3 <-
   rename(
     
     # demographics/helpers
+    "id" = "study_id",
     "event" = "redcap_event_name",
     "pd_dur" = "rok_vzniku_pn",
     
@@ -222,7 +223,7 @@ d3 <-
     event = sub( "_arm_1", "", event ) %>% sub( "nvtva_", "", . ) %>% sub( "operace", "surgery", . ),
     pd_dur = 2023 - pd_dur,
     sex = case_when( sex == 0 ~ "female", sex == 1 ~ "male" ),
-    type_pd = case_when( type_pd == 1 ~ "tremordominant", type_pd == 2 ~ "akinetic-rigid" ),
+    type_pd = case_when( type_pd == 1 ~ "tremor-dominant", type_pd == 2 ~ "akinetic-rigid" ),
     asym_park = case_when( asym_park == 1 ~ "right", asym_park == 2 ~ "left" ),
     
     # stimulation parameters 
@@ -271,7 +272,7 @@ d3 <-
   
   d3 %>%
   select(-event) %>% # drop column with event-name
-  relocate( drs_years_post, .after = drsii_total ) %>% # relocate post-surgery DRS
+  relocate( drs_years_post, .after = moca ) %>% # relocate post-surgery DRS
   relocate( drs_post, .after = drs_years_post )
 
 # save the descriptive variables

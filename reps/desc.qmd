@@ -1,5 +1,65 @@
 ---
 title: "Data Description"
 author: "Josef Mana"
-format: html
+date: "`r Sys.Date()`"
+number-sections: true
+format:
+  html:
+    self-contained: true
+    title-block-banner: true
+    toc: true
+    warning: false
+    code-fold: true
+    df-print: kable
+  pdf:
+    echo: false
+    warning: false
+    df-print: kable
 ---
+
+```{r}
+#| label: import
+#| warning: false
+
+rm( list = ls() )
+
+# packages to use
+library(here)
+library(dplyr)
+library(tidyverse)
+library(gt)
+
+# read the data
+d0 <- read.csv( here("_data","desc.csv"), sep = "," ) # demographic and clinical variables
+d1 <- read.csv( here("_data","ssrt_lab.csv"), sep = "," ) # SSRT data
+v <- read.csv( here("_data","vars.csv"), sep = ";" ) # variable names and groupings
+
+# some in-house functions
+rprint <- function( x, dec = 2 ) sprintf( paste0("%.",dec,"f"), round( x, dec ) )
+
+```
+
+This is a report providing descriptive statistics of `r nrow(d0)` patients included in the experiment of combined (mid/high) stimulation to (ventral/dorsal) STN for cognitive intervention in PD.
+
+## Demographics
+
+```{r}
+#| label: tbl-desc
+#| tbl-cap: Patient-specific information
+#| column: page-inset-right
+
+d0 %>%
+  mutate( across( where(is.numeric), ~ sub( ".00", "", rprint(.x,2), fixed = T ) ) ) %>%
+  column_to_rownames("id") %>%
+  t() %>%
+  as.data.frame() %>%
+  mutate( across( everything(), ~ ifelse( grepl("NA",.x), "-", .x ) ) ) %>%
+  rownames_to_column("var") %>%
+    mutate(
+        grp = sapply( 1:nrow(.), function(i) v[ v$var == var[i], "grp" ] ),
+        var = sapply( 1:nrow(.), function(i) v[ v$var == var[i], "lab" ] )
+    ) %>%
+    gt( rowname_col = "var", groupname_col = "grp" ) %>%
+    cols_align( align = "center", columns = -1 )
+```
+
