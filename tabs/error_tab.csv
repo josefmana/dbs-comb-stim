@@ -1,0 +1,9 @@
+id,cbal,nosignal_ctrl,signal_ctrl,nosignal_exp,signal_exp
+IPN275,0+,6,44,3,46
+IPN285,+0,7,47,18,43
+IPN390,0+,4,49,5,50
+IPN526,+0,2,49,17,42
+IPN541,+0,6,49,2,49
+IPN601,0+,4,50,16,51
+IPN602,+0,3,49,12,43
+IPN715,+0,4,42,6,44
