@@ -250,7 +250,7 @@ for ( i in names(d3)[ grepl( "years", names(d3) ) ] ) {
 
 }
 
-# move psot-surgery variables up
+# move post-surgery variables up
 for ( i in unique(d0$id) ) {
   
   # move the surgery dates
@@ -267,7 +267,7 @@ for ( i in unique(d0$id) ) {
 
 }
 
-# finshing touches
+# finishing touches
 d3 <-
   
   d3 %>%
