@@ -285,7 +285,9 @@ t3 <-
   # change column order such that experimental conditions are grouped together
   relocate( "ssd_exp", .after = "ssrt_ctrl" ) %>%
   relocate( "nthRT_exp", .after = "ssd_exp") %>%
-  relocate( "raceTest_ctrl", .before = "ssd_exp" )
+  relocate( "raceTest_ctrl", .before = "ssd_exp" ) %>%
+  relocate( "sRT_ctrl", .after = "ssd_ctrl" ) %>%
+  relocate( "sRT_exp", .after = "ssd_exp" )
 
 # save it
 write.table( t3, here("tabs","signal_tab.csv"), sep = ",", row.names = F, quote = F )
