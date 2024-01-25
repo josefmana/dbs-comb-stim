@@ -282,4 +282,4 @@ write.table( x = d3, file = "_data/desc.csv", sep = ",", row.names = F, quote = 
 # SESSION INFO -----
 
 # write the sessionInfo() into a .txt file
-capture.output( sessionInfo(), file = "import_envir.txt" )
+capture.output( sessionInfo(), file = here("scripts","import_envir.txt") )
