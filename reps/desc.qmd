@@ -63,3 +63,32 @@ d0 %>%
     cols_align( align = "center", columns = -1 )
 ```
 
+
+```{r}
+#| label: tbl-ssrt
+#| tbl-cap: "Patient-specific task outcomes' summaries"
+#| column: page-inset-right
+
+# using table "t" from "ssrt_desc.R" run this:
+gt( t, rowname_col = "var", groupname_col = "type" ) %>%
+    
+  # need to more efficient way to do this
+  tab_spanner( label = "IPN275", columns = starts_with("IPN275"), gather = F ) %>%
+  tab_spanner( label = "IPN285", columns = starts_with("IPN285"), gather = F ) %>%
+  tab_spanner( label = "IPN390", columns = starts_with("IPN390"), gather = F ) %>%
+  tab_spanner( label = "IPN526", columns = starts_with("IPN526"), gather = F ) %>%
+  tab_spanner( label = "IPN541", columns = starts_with("IPN541"), gather = F ) %>%
+  tab_spanner( label = "IPN601", columns = starts_with("IPN601"), gather = F ) %>%
+  tab_spanner( label = "IPN602", columns = starts_with("IPN602"), gather = F ) %>%
+  tab_spanner( label = "IPN715", columns = starts_with("IPN715"), gather = F ) %>%
+    
+  tab_spanner( label = "0+", columns = contains("0+"), gather = F ) %>%
+  tab_spanner( label = "+0", columns = contains("+0"), gather = F ) %>%
+    
+  cols_label(
+    ends_with("ctrl") ~ "0",
+    ends_with("exp") ~ "+"
+  ) %>%
+    
+  cols_align( -1, align = "center" )
+```

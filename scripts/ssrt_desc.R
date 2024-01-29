@@ -4,7 +4,7 @@
 rm( list = ls() ) # clear the environment
 
 # list required packages into a character object
-pkgs <- c("here","tidyverse","ggplot2","patchwork")
+pkgs <- c("here","tidyverse","purrr","ggplot2","patchwork")
 
 # load or install packages as needed
 for ( i in pkgs ) {
@@ -25,12 +25,12 @@ cbPal <- c( "#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#
 d1 <- read.csv( here("_data","ssrt_lab.csv"), sep = "," )
 
 # exclude practice block
-d1 <- subset (d1, block > 0)
+d1 <- subset ( d1, block > 0 )
 
 # prepare some variables
-d1 <- #d0 <-
+d1 <-
   
-  d1 %>% #d0 %>%
+  d1 %>%
   
   mutate(
     
@@ -80,7 +80,7 @@ t1 <-
         # since we want condition-specific row percentages, we multiply by 2 (conditions) * 100 (max percentage)
         with( subset( d1, signal == i ), round( 200 * prop.table( table( id, acc, cond ), margin = 1 ), 0 ) ) %>%
         as.data.frame() %>%
-        filter( acc == 0 ) %>% # keep errors (acc == 0) only
+        filter( acc == 0 ) %>% # keep errors (i.e., acc == 0) only
         pivot_wider( id_cols = id, names_from = cond, values_from = Freq, names_prefix = paste0(i,"_") )
       
     ) %>%
@@ -91,7 +91,7 @@ t1 <-
   )
 
 # save it
-write.table( t1, here("tabs","error_tab.csv"), sep = ",", row.names = F, quote = F )
+#write.table( t1, here("tabs","error_tab.csv"), sep = ",", row.names = F, quote = F )
 
 
 # step no. 3: analyse no-signal data ----
@@ -128,7 +128,7 @@ t2 <-
   )
 
 # save it
-write.table( t2, here("tabs","nosignal_tab.csv"), sep = ",", row.names = F, quote = F )
+#write.table( t2, here("tabs","nosignal_tab.csv"), sep = ",", row.names = F, quote = F )
 
 # prepare a graphical representation of t2
 f1 <-
@@ -221,9 +221,6 @@ funcSignal <-
       }
     )
     
-    # SSRT = nthRT - ssd
-    ssrt <- nthRT - ssd_m
-    
     # signal-respond RT
     with(
       subset( d, signal == "signal" & presp == 1), {
@@ -237,9 +234,9 @@ funcSignal <-
       c(
         ssd = paste0( round(ssd_m,0), " (", round(ssd_v,0), ")" ), # Stop-Signal Delay
         nthRT = round( nthRT, 0 ), # nth go reaction time
-        ssrt = round( ssrt, 0 ), # Stop-Signal Response Time
+        ssrt = round( nthRT-ssd_m, 0 ), # Stop-Signal Response Time
         sRT = paste0( round(sRT_m,0), " (", round(sRT_v,0), ")" ), # signal response time
-        raceTest = round( goRT_m - sRT_m, 0 ) # difference between mean go vs stop response times
+        raceTest = round( goRT_m-sRT_m, 0 ) # difference between mean go vs stop response times
       )
       
     )  
@@ -290,11 +287,64 @@ t3 <-
   relocate( "sRT_exp", .after = "ssd_exp" )
 
 # save it
-write.table( t3, here("tabs","signal_tab.csv"), sep = ",", row.names = F, quote = F )
+#write.table( t3, here("tabs","signal_tab.csv"), sep = ",", row.names = F, quote = F )
 
 # NEED TO DO: VISUALISE SIGNAL TRIALS
 
 
+# BIG DESCRIPTIVE TABLE ----
+
+# prepare a single big descriptive table
+t <-
+  
+  lapply(
+    
+    paste0("t",1:3),
+    function(i)
+      
+      get(i) %>%
+      mutate( across( where(is.numeric), ~ sprintf( paste0( "%.", ifelse(i=="t1",0,2) ,"f" ), round( .x, 2) ) ) ) %>%
+      pivot_longer( cols = !c(id,cbal), values_to = "error", names_to = c("task","cond"), names_pattern = "(.*)_(.*)" ) %>%
+      pivot_wider( values_from = error, names_from = task ) %>%
+      arrange( by = cbal ) %>%
+      mutate( name = paste(id,cbal,cond,sep="_") ) %>%
+      column_to_rownames("name") %>%
+      select( -id, -cbal, -cond ) %>%
+      t() %>%
+      as.data.frame() %>%
+      rownames_to_column("var") %>%
+      mutate(
+        type = case_when(
+          i == "t1" ~ "Error rates",
+          i == "t2" ~ "Go trials",
+          i == "t3" ~ "Stop trials"
+        ),
+        .after = 1
+      )
+    
+  ) %>%
+  
+  reduce( full_join ) %>%
+  
+  # rename variables for the table
+  mutate(
+    var =
+      case_when(
+        var == "nosignal" ~ "Go trials (%)",
+        var == "signal" ~ "Stop trials (%)",
+        var == "p(correct)" ~ "P(Correct|Go)",
+        var == "p(miss)" ~ "P(Miss|Go)",
+        var == "RT" ~ "Response Time (ms)",
+        var == "ssd" ~ "Stop Signal Delay (ms)",
+        var == "sRT" ~ "Response Time (ms)",
+        var == "nthRT" ~ "nth Response Time (ms)",
+        var == "ssrt" ~ "Stop-Signal Reaction Time (ms)",
+        var == "raceTest" ~ "Signal-minus-Go Response Time (ms)"
+      )
+  )
+
+# save it
+write.table( t, here("tabs","ssrt_summary.csv"), sep = ",", row.names = F, quote = F )
 
 # SESSION INFO -----
 
