@@ -3,14 +3,11 @@
 
 rm( list = ls() ) # clear the environment
 
-# list required packages into a character object
-pkgs <- c("here","tidyverse","purrr","ggplot2","patchwork")
+library(here)
+library(tidyverse)
+library(purrr)
+library(patchwork)
 
-# load or install packages as needed
-for ( i in pkgs ) {
-  if ( i %in% rownames( installed.packages() ) == F ) install.packages(i) # install if it ain't installed yet
-  if ( i %in% names( sessionInfo()$otherPkgs ) == F ) library( i , character.only = T ) # load if it ain't loaded yet
-}
 
 # prepare folders for results
 sapply( c("figs","tabs"), function(i) if( !dir.exists(i) ) dir.create(i) )
@@ -31,7 +28,6 @@ d1 <- subset ( d1, block > 0 )
 d1 <-
   
   d1 %>%
-  
   mutate(
     
     # make factors of a couple of variables that may be used later on
@@ -90,9 +86,6 @@ t1 <-
 
   )
 
-# save it
-#write.table( t1, here("tabs","error_tab.csv"), sep = ",", row.names = F, quote = F )
-
 
 # step no. 3: analyse no-signal data ----
 
@@ -126,9 +119,6 @@ t2 <-
       relocate( "RT_ctrl", .after = "p(miss)_ctrl" )
     
   )
-
-# save it
-#write.table( t2, here("tabs","nosignal_tab.csv"), sep = ",", row.names = F, quote = F )
 
 # prepare a graphical representation of t2
 f1 <-
@@ -190,7 +180,7 @@ f1$resp <-
   scale_colour_manual( values = cbPal[c(1,2)] )
 
 # put them to a single figure
-with( f1, correct/miss/resp ) +  plot_annotation( tag_levels = "a" )
+with( f1, correct/miss/resp ) +  plot_annotation( tag_levels = "A" )
 
 # save the figure
 ggsave( here("figs","nosignal_fig.jpeg"), width = 8.5, height = 11 )
@@ -286,9 +276,6 @@ t3 <-
   relocate( "sRT_ctrl", .after = "ssd_ctrl" ) %>%
   relocate( "sRT_exp", .after = "ssd_exp" )
 
-# save it
-#write.table( t3, here("tabs","signal_tab.csv"), sep = ",", row.names = F, quote = F )
-
 # NEED TO DO: VISUALISE SIGNAL TRIALS
 
 
@@ -345,8 +332,3 @@ t <-
 
 # save it
 write.table( t, here("tabs","ssrt_summary.csv"), sep = ",", row.names = F, quote = F )
-
-# SESSION INFO -----
-
-# write the sessionInfo() into a .txt file
-capture.output( sessionInfo(), file = here("scripts","ssrt_desc_envir.txt") )

@@ -1,5 +1,0 @@
----
-title: "Stop-signal race model"
-author: "Josef Mana"
-format: html
----

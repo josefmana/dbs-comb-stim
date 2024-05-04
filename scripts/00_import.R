@@ -1,17 +1,11 @@
 # This script extracts and formats data from raw tables to analysis-ready outcomes.
 
-# clear the environment
 rm( list = ls() )
-gc()
 
-# list required packages into a character object
-pkgs <- c( "here", "readxl", "janitor", "dplyr", "tidyverse", "lubridate" )
-
-# load or install packages as needed
-for ( i in pkgs ) {
-  if ( i %in% rownames( installed.packages() ) == F ) install.packages(i) # install if it ain't installed yet
-  if ( i %in% names( sessionInfo()$otherPkgs ) == F ) library( i , character.only = T ) # load if it ain't loaded yet
-}
+library(here)
+library(readxl)
+library(janitor)
+library(tidyverse)
 
 # prepare a folder for sessions info and pre-processed data
 if( !dir.exists("_data") ) dir.create("_data")
@@ -67,7 +61,7 @@ d0$date <- as.Date( sapply( 1:nrow(d0), function(i) with( cb, datum[surname == d
 
 # SSRT DATA ----
 
-# ---- raw in-numbers data ----
+## raw in-numbers data ----
 
 # read and wrangle the data
 d1 <-
@@ -106,10 +100,10 @@ d1 <-
   )
 
 # save this as a raw numbers-based data set as csv
-write.table( x = d1, file = "_data/ssrt_raw.csv", sep = ",", row.names = F, quote = F )
+write.table( x = d1, file = here("_data","ssrt_raw.csv"), sep = ",", row.names = F, quote = F )
 
 
-# ---- tidy labelled data ----
+## tidy labelled data ----
 
 # re-code selected columns
 d2 <- 
@@ -150,7 +144,7 @@ d2 <-
   )
 
 # save this as a labelled data set as csv
-write.table( x = d2, file = "_data/ssrt_lab.csv", sep = ",", row.names = F, quote = F )
+write.table( x = d2, file = here("_data","ssrt_lab.csv"), sep = ",", row.names = F, quote = F )
 
 
 # DEMOGRAPHIC DATA ----
@@ -276,10 +270,5 @@ d3 <-
   relocate( drs_post, .after = drs_years_post )
 
 # save the descriptive variables
-write.table( x = d3, file = "_data/desc.csv", sep = ",", row.names = F, quote = F )
+write.table( x = d3, file = here("_data","desc.csv"), sep = ",", row.names = F, quote = F )
 
-
-# SESSION INFO -----
-
-# write the sessionInfo() into a .txt file
-capture.output( sessionInfo(), file = here("scripts","import_envir.txt") )
