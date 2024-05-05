@@ -16,61 +16,81 @@ data {
   int<lower=1> N_1;  // total number of observations in experimental condition
   vector[N_1] Y_1;  // response variable in experimental condition
   
+  // data for participant-level parameters (shared across conditions)
+  int<lower=1> K;  // number of participants
+  int<lower=1> M;  // number of coefficients per level
+  array[N_0] int<lower=1> J_0;  // grouping indicator per observation in control condition
+  array[N_1] int<lower=1> J_1;  // grouping indicator per observation in experimental condition
+  
   // data for participant-level parameters in control condition
-  int<lower=1> K_0;  // number of participants
-  int<lower=1> M_0;  // number of coefficients per level
-  array[N_0] int<lower=1> J_0;  // grouping indicator per observation
+  //int<lower=1> K_0;  // number of participants
+  //int<lower=1> M_0;  // number of coefficients per level
+  //array[N_0] int<lower=1> J_0;  // grouping indicator per observation
   
   // data for participant-level parameters in experimental condition
-  int<lower=1> K_1;  // number of participants
-  int<lower=1> M_1;  // number of coefficients per level
-  array[N_1] int<lower=1> J_1;  // grouping indicator per observation
+  //int<lower=1> K_1;  // number of participants
+  //int<lower=1> M_1;  // number of coefficients per level
+  //array[N_1] int<lower=1> J_1;  // grouping indicator per observation
   
   // participant-level predictor values
-  vector[N0] Z_0_1; // control condition
-  vector[N1] Z_1_1; // experimental condition
+  vector[N_0] Z_0_1; // control condition
+  vector[N_1] Z_1_1; // experimental condition
+  
+  // prior specifications
+  vector[2] mu_0p;
+  vector[2] mu_1p;
+  vector[2] sigma_0p;
+  vector[2] sigma_1p;
+  vector[2] beta_0p;
+  vector[2] beta_1p;
+  vector[2] tau_p;
+  //vector[2] sd_1p;
 
 }
 
 parameters {
   
-  // temporary intercepts for control condition
-  real Intercept_0;
+  // intercepts for control condition
+  real InterceptMu_0;
   real InterceptSigma_0;
-  real InterceptTau_0;
+  real InterceptBeta_0;
   
-  // temporary intercepts for experimental condition
-  real Intercept_1;
+  // intercepts for experimental condition
+  real InterceptMu_1;
   real InterceptSigma_1;
-  real InterceptTau_1;
+  real InterceptBeta_1;
   
   // participant level standard deviations and standardized parameters
-  vector<lower=0>[M_0] sd_0;
-  array[M_0] vector[N_0] z_0;
-  vector<lower=0>[M_1] sd_1;
-  array[M_1] vector[N_1] z_1;
+  vector<lower=0>[M] tau;
+  array[M] vector[K] z;
+  
+  //vector<lower=0>[M_0] sd_0;
+  //array[M_0] vector[K_0] z_0;
+  //vector<lower=0>[M_1] sd_1;
+  //array[M_1] vector[K_1] z_1;
   
 }
 
 transformed parameters {
 
-  // control condition
-  vector[N_0] r_0_1;  // actual group-level effects
-  real lprior_0 = 0;  // prior contributions to the log posterior
-  r_0_1 = ( sd_0[1] * (z_0[1]) );
-  lprior_0 += normal_lpdf(Intercept_0 | 700, 300);
-  lprior_0 += normal_lpdf(InterceptSigma_0 | 0, 2.5);
-  lprior_0 += normal_lpdf(InterceptTau_0 | 1.7, 1.3);
-  lprior_0 += normal_lpdf(sd_0 | 0, 500) - 1 * normal_lccdf(0 | 0, 500);
   
-  // experimental condition
-  vector[N_1] r_1_1;  // actual group-level effects
-  real lprior_1 = 0;  // prior contributions to the log posterior
-  r_1_1 = ( sd_1[1] * (z_1[1]) );
-  lprior_1 += normal_lpdf(Intercept_1 | 700, 300);
-  lprior_1 += normal_lpdf(InterceptSigma_1 | 0, 2.5);
-  lprior_1 += normal_lpdf(InterceptTau_1 | 1.7, 1.3);
-  lprior_1 += normal_lpdf(sd_0 | 0, 500) - 1 * normal_lccdf(0 | 0, 500);
+  vector[K] r;  // actual group-level effects
+  r = ( tau[1] * (z[1]) );
+  
+  real lprior = 0;  // prior contributions to the log posterior
+  
+  // control condition
+  lprior += normal_lpdf( InterceptMu_0 | mu_0p[1], mu_0p[2] );
+  lprior += normal_lpdf( InterceptSigma_0 | sigma_0p[1], sigma_0p[2] );
+  lprior += normal_lpdf( InterceptBeta_0 | beta_0p[1], beta_0p[2] );
+  
+   // experimental condition
+  lprior += normal_lpdf( InterceptMu_1 | mu_1p[1], mu_1p[2] );
+  lprior += normal_lpdf( InterceptSigma_1 | sigma_1p[1], sigma_1p[2] );
+  lprior += normal_lpdf( InterceptBeta_1 | beta_1p[1], beta_1p[2] );
+  
+  // participant-level
+  lprior += normal_lpdf( tau | tau_p[1], tau_p[2] ) - 1 * normal_lccdf( 0 | tau_p[1], tau_p[2] );
 
 }
 
@@ -87,53 +107,51 @@ model {
   vector[N_1] sigma_1 = rep_vector(0.0, N_1);
   
   // initialize ExGaussian rates
-  vector[N_0] tau_0 = rep_vector(0.0, N_0);
-  vector[N_1] tau_1 = rep_vector(0.0, N_1);
+  vector[N_0] beta_0 = rep_vector(0.0, N_0);
+  vector[N_1] beta_1 = rep_vector(0.0, N_1);
   
   /// add measurement model for control condition
-  mu_0 += Intercept_0;
+  mu_0 += InterceptMu_0;
   sigma_0 += InterceptSigma_0;
-  tau_0 += InterceptTau_0;
+  beta_0 += InterceptBeta_0;
   for (n in 1:N_0) {
     // add more terms to the linear predictor
-    mu_0[n] += r_0_1[J_0[n]] * Z_0_1[n];
+    mu_0[n] += r[J_0[n]] * Z_0_1[n];
   }
   sigma_0 = exp(sigma_0);
-  tau_0 = exp(tau_0);
-  target += exp_mod_normal_lpdf(Y | mu_0 - tau_0, sigma_0, inv(tau_0) );
+  beta_0 = exp(beta_0);
+  target += exp_mod_normal_lpdf(Y_0 | mu_0 - beta_0, sigma_0, inv(beta_0) );
   
   /// add measurement model for experimental condition
-  mu_1 += Intercept_1;
+  mu_1 += InterceptMu_1;
   sigma_1 += InterceptSigma_1;
-  tau_1 += InterceptTau_1;
+  beta_1 += InterceptBeta_1;
   for (n in 1:N_1) {
     // add more terms to the linear predictor
-    mu_1[n] += r_1_1[J_0[n]] * Z_1_1[n];
+    mu_1[n] += r[J_0[n]] * Z_1_1[n];
   }
   sigma_1 = exp(sigma_1);
-  tau_1 = exp(tau_1);
-  target += exp_mod_normal_lpdf(Y | mu_1 - tau_1, sigma_1, inv(tau_1) );
+  beta_1 = exp(beta_1);
+  target += exp_mod_normal_lpdf(Y_1 | mu_1 - beta_1, sigma_1, inv(beta_1) );
   
   // add priors including constants
-  target += lprior_0;
-  target += std_normal_lpdf(z_0[1]);
-  target += lprior_1;
-  target += std_normal_lpdf(z_1[1]);
+  target += lprior;
+  target += std_normal_lpdf(z[1]);
   
 }
 
 generated quantities {
   
   // intercepts for mu
-  real b_Intercept_0 = Intercept_0;
-  real b_Intercept_1 = Intercept_1;
+  //real b_InterceptMu_0 = InterceptMu_0;
+  //real b_InterceptMu_1 = InterceptMu_1;
   
   // intercepts for sigma
-  real b_sigma_Intercept_0 = Intercept_sigma_0;
-  real b_sigma_Intercept_1 = Intercept_sigma_1;
+  //real b_sigma_InterceptMu_0 = InterceptSigma_0;
+  //real b_sigma_InterceptMu_1 = InterceptSigma_1;
   
-  // intercepts for tau
-  real b_tau_Intercept_0 = Intercept_tau_0;
-  real b_tau_Intercept_1 = Intercept_tau_1;
+  // intercepts for beta
+  //real b_beta_InterceptMu_0 = InterceptBeta_0;
+  //real b_beta_InterceptMu_1 = InterceptBeta_1;
 
 }
