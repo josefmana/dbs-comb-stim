@@ -10,122 +10,145 @@
 
 data {
 
-  int<lower=1> N_0;  // total number of observations in control condition
-  vector[N_0] Y_0;  // response variable in control condition
+  int<lower=1> N_0_go;  // total number of observations in control GO condition
+  vector[N_0_go] Y_0_go;  // response variable in control GO condition
+  int<lower=1> N_0_sr;  // total number of observations in control condition for STOP-SIGNAL data
+  vector[N_0_sr] Y_0_sr;  // response variable in control condition for STOP-SIGNAL data
+  int<lower=1> N_0_na;  // total number of observations in control condition for SUCCESSFUL STOP data
+  vector[N_0_na] Y_0_na;  // response variable in control condition for SUCCESSFUL STOP data
   
-  int<lower=1> N_1;  // total number of observations in experimental condition
-  vector[N_1] Y_1;  // response variable in experimental condition
+  int<lower=1> N_1_go;  // total number of observations in experimental GO condition
+  vector[N_1_go] Y_1_go;  // response variable in experimental GO condition
+  int<lower=1> N_1_sr;  // total number of observations in experimental condition for STOP-SIGNAL data
+  vector[N_1_sr] Y_1_sr;  // response variable in experimental condition for STOP-SIGNAL data
+  int<lower=1> N_1_na;  // total number of observations in experimental condition for SUCCESSFUL STOP data
+  vector[N_1_na] Y_1_na;  // response variable in experimental condition for SUCCESSFUL STOP data
+  
+  // SSD
+  vector[N_0_sr] SSD_0_sr;
+  vector[N_1_sr] SSD_1_sr;
+  vector[N_0_na] SSD_0_na;
+  vector[N_1_na] SSD_1_na;
   
   // data for participant-level parameters (shared across conditions)
   int<lower=1> K;  // number of participants
   int<lower=1> M;  // number of coefficients per level
-  array[N_0] int<lower=1> J_0;  // grouping indicator per observation in control condition
-  array[N_1] int<lower=1> J_1;  // grouping indicator per observation in experimental condition
-  
-  // data for participant-level parameters in control condition
-  //int<lower=1> K_0;  // number of participants
-  //int<lower=1> M_0;  // number of coefficients per level
-  //array[N_0] int<lower=1> J_0;  // grouping indicator per observation
-  
-  // data for participant-level parameters in experimental condition
-  //int<lower=1> K_1;  // number of participants
-  //int<lower=1> M_1;  // number of coefficients per level
-  //array[N_1] int<lower=1> J_1;  // grouping indicator per observation
+  array[N_0_go] int<lower=1> J_0_go;  // grouping indicator per observation in control condition
+  array[N_1_go] int<lower=1> J_1_go;  // grouping indicator per observation in experimental condition
+  array[N_0_sr] int<lower=1> J_0_sr;  // grouping indicator per observation in control condition
+  array[N_1_sr] int<lower=1> J_1_sr;  // grouping indicator per observation in experimental condition
+  array[N_0_na] int<lower=1> J_0_na;  // grouping indicator per observation in control condition
+  array[N_1_na] int<lower=1> J_1_na;  // grouping indicator per observation in experimental condition
   
   // participant-level predictor values
-  vector[N_0] Z_0_1; // control condition
-  vector[N_1] Z_1_1; // experimental condition
+  vector[N_0_go] Z_0_go; // control condition
+  vector[N_1_go] Z_1_go; // experimental condition
+  vector[N_0_sr] Z_0_sr; // control condition
+  vector[N_1_sr] Z_1_sr; // experimental condition
+  vector[N_0_na] Z_0_na; // control condition
+  vector[N_1_na] Z_1_na; // experimental condition
   
   // prior specifications
-  vector[2] mu_0p;
-  vector[2] mu_1p;
-  vector[2] sigma_0p;
-  vector[2] sigma_1p;
-  vector[2] beta_0p;
-  vector[2] beta_1p;
-  vector[2] tau_p;
-  //vector[2] sd_1p;
+  vector<lower=0>[2] mu_go_0_p;
+  vector<lower=0>[2] mu_go_1_p;
+  vector[2] sigma_go_0_p;
+  vector[2] sigma_go_1_p;
+  vector[2] beta_go_0_p;
+  vector[2] beta_go_1_p;
+  vector[2] tau_go_p;
+  
+  vector<lower=0>[2] mu_stop_0_p;
+  vector<lower=0>[2] mu_stop_1_p;
+  vector[2] sigma_stop_0_p;
+  vector[2] sigma_stop_1_p;
+  vector[2] beta_stop_0_p;
+  vector[2] beta_stop_1_p;
+  vector[2] tau_stop_p;
 
 }
 
 parameters {
   
   // intercepts for control condition
-  real InterceptMu_0;
-  real InterceptSigma_0;
-  real InterceptBeta_0;
+  real mu_go_0;
+  real sigma_go_0;
+  real beta_go_0;
+  real mu_stop_0;
+  real sigma_stop_0;
+  real beta_stop_0;
   
   // intercepts for experimental condition
-  real InterceptMu_1;
-  real InterceptSigma_1;
-  real InterceptBeta_1;
+  real mu_go_1;
+  real sigma_go_1;
+  real beta_go_1;
+  real mu_stop_1;
+  real sigma_stop_1;
+  real beta_stop_1;
   
   // participant level standard deviations and standardized parameters
-  vector<lower=0>[M] tau;
-  array[M] vector[K] z;
-  
-  //vector<lower=0>[M_0] sd_0;
-  //array[M_0] vector[K_0] z_0;
-  //vector<lower=0>[M_1] sd_1;
-  //array[M_1] vector[K_1] z_1;
+  vector<lower=0>[M] tau_go;
+  vector<lower=0>[M] tau_stop;
+  array[M] vector[K] z_go;
+  array[M] vector[K] z_stop;
   
 }
 
 transformed parameters {
 
-  
-  vector[K] r;  // actual group-level effects
-  r = ( tau[1] * (z[1]) );
+  // actual group-level effects
+  vector[K] r_go;
+  r_go = ( tau_go[1] * (z_go[1]) );
+  vector[K] r_stop;
+  r_stop = ( tau_stop[1] * (z_stop[1]) );
   
   real lprior = 0;  // prior contributions to the log posterior
   
   // control condition
-  lprior += normal_lpdf( InterceptMu_0 | mu_0p[1], mu_0p[2] );
-  lprior += normal_lpdf( InterceptSigma_0 | sigma_0p[1], sigma_0p[2] );
-  lprior += normal_lpdf( InterceptBeta_0 | beta_0p[1], beta_0p[2] );
+  lprior += normal_lpdf( mu_go_0 | mu_go_0_p[1], mu_go_0_p[2] );
+  lprior += normal_lpdf( sigma_go_0 | sigma_go_0_p[1], sigma_go_0_p[2] );
+  lprior += normal_lpdf( beta_go_0 | beta_go_0_p[1], beta_go_0_p[2] );
+  lprior += normal_lpdf( mu_stop_0 | mu_stop_0_p[1], mu_stop_0_p[2] );
+  lprior += normal_lpdf( sigma_stop_0 | sigma_stop_0_p[1], sigma_stop_0_p[2] );
+  lprior += normal_lpdf( beta_stop_0 | beta_stop_0_p[1], beta_stop_0_p[2] );
   
    // experimental condition
-  lprior += normal_lpdf( InterceptMu_1 | mu_1p[1], mu_1p[2] );
-  lprior += normal_lpdf( InterceptSigma_1 | sigma_1p[1], sigma_1p[2] );
-  lprior += normal_lpdf( InterceptBeta_1 | beta_1p[1], beta_1p[2] );
+  lprior += normal_lpdf( mu_go_1 | mu_go_1_p[1], mu_go_1_p[2] );
+  lprior += normal_lpdf( sigma_go_1 | sigma_go_1_p[1], sigma_go_1_p[2] );
+  lprior += normal_lpdf( beta_go_1 | beta_go_1_p[1], beta_go_1_p[2] );
+  lprior += normal_lpdf( mu_stop_1 | mu_stop_1_p[1], mu_stop_1_p[2] );
+  lprior += normal_lpdf( sigma_stop_1 | sigma_stop_1_p[1], sigma_stop_1_p[2] );
+  lprior += normal_lpdf( beta_stop_1 | beta_stop_1_p[1], beta_stop_1_p[2] );
   
   // participant-level
-  lprior += normal_lpdf( tau | tau_p[1], tau_p[2] ) - 1 * normal_lccdf( 0 | tau_p[1], tau_p[2] );
+  lprior += normal_lpdf( tau_go | tau_go_p[1], tau_go_p[2] ) - 1 * normal_lccdf( 0 | tau_go_p[1], tau_go_p[2] );
+  lprior += normal_lpdf( tau_stop | tau_stop_p[1], tau_stop_p[2] ) - 1 * normal_lccdf( 0 | tau_stop_p[1], tau_stop_p[2] );
 
 }
 
 model {
   
-  // likelihood including constants
-  
-  /// initialize ExGaussian means
-  vector[N_0] mu_0 = rep_vector(0.0, N_0);
-  vector[N_1] mu_1 = rep_vector(0.0, N_1);
-  
-  /// initialize ExGaussian standard deviations
-  vector[N_0] sigma_0 = rep_vector(0.0, N_0);
-  vector[N_1] sigma_1 = rep_vector(0.0, N_1);
-  
-  // initialize ExGaussian rates
-  vector[N_0] beta_0 = rep_vector(0.0, N_0);
-  vector[N_1] beta_1 = rep_vector(0.0, N_1);
-  
-  /// add measurement model for control condition
-  mu_0 += InterceptMu_0;
-  sigma_0 += InterceptSigma_0;
-  beta_0 += InterceptBeta_0;
-  for (n in 1:N_0) {
-    // add more terms to the linear predictor
-    mu_0[n] += r[J_0[n]] * Z_0_1[n];
+  // measurement model for control condition GO trials
+  for (n in 1:N_0_go) {
+    mu_go_0[n] += r[J_0_go[n]] * Z_0_go[n];
   }
-  sigma_0 = exp(sigma_0);
-  beta_0 = exp(beta_0);
-  target += exp_mod_normal_lpdf(Y_0 | mu_0 - beta_0, sigma_0, inv(beta_0) );
+  sigma_go_0 = exp(sigma_go_0);
+  beta_go_0 = exp(beta_go_0);
+  target += exp_mod_normal_lpdf(Y_0_go | mu_go_0 - beta_go_0, sigma_go_0, inv(beta_go_0) );
   
-  /// add measurement model for experimental condition
-  mu_1 += InterceptMu_1;
-  sigma_1 += InterceptSigma_1;
-  beta_1 += InterceptBeta_1;
+  // measurement model for control condition STOP-RESPONSE trials
+  for (n in 1:N_0_sr) {
+    mu_stop_sr[n] += r[J_0_sr[n]] * Z_0_sr[n];
+  }
+  sigma_stop_0 = exp(sigma_stop_0);
+  beta_stop_0 = exp(beta_stop_0);
+  target += exp_mod_normal_lpdf( Y_0_sr | mu_go_0 - beta_go_0, sigma_go_0, inv(beta_go_0) );
+  target += exp_mod_normal_lccdf( Y_0_sr - SSD_0_sr | mu_stop_0 - beta_stop_0, sigma_stop_0, inv(beta_stop_0) )
+  
+  // measurement model for control condition STOP-SUCCESS trials
+  
+  
+  
+  // add measurement model for experimental condition
   for (n in 1:N_1) {
     // add more terms to the linear predictor
     mu_1[n] += r[J_0[n]] * Z_1_1[n];
@@ -133,6 +156,7 @@ model {
   sigma_1 = exp(sigma_1);
   beta_1 = exp(beta_1);
   target += exp_mod_normal_lpdf(Y_1 | mu_1 - beta_1, sigma_1, inv(beta_1) );
+  //target += exp_mod_normal_lpdf(Y_1 - SSD | mu_1 - beta_1, sigma_1, inv(beta_1) );
   
   // add priors including constants
   target += lprior;
@@ -141,17 +165,5 @@ model {
 }
 
 generated quantities {
-  
-  // intercepts for mu
-  //real b_InterceptMu_0 = InterceptMu_0;
-  //real b_InterceptMu_1 = InterceptMu_1;
-  
-  // intercepts for sigma
-  //real b_sigma_InterceptMu_0 = InterceptSigma_0;
-  //real b_sigma_InterceptMu_1 = InterceptSigma_1;
-  
-  // intercepts for beta
-  //real b_beta_InterceptMu_0 = InterceptBeta_0;
-  //real b_beta_InterceptMu_1 = InterceptBeta_1;
 
 }
