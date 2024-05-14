@@ -59,9 +59,9 @@ dlist <- list(
   K = length( unique(GOcon$id) ), M = 1,
   
   # priors
-  mu_0p = c(.7,.2), sigma_0p = c(-6,2), beta_0p = c(-6,2),
-  mu_1p = c(.7,.2), sigma_1p = c(-6,2), beta_1p = c(-6,2),
-  tau_mu_p = c(0,.2)#, tau_sigma_p = c(0,1), tau_beta_p = c(0,1)
+  mu_0p = c(-.4,.2), sigma_0p = c(-2,.2), beta_0p = c(-2,.2),
+  mu_1p = c(-.4,.2), sigma_1p = c(-2,.2), beta_1p = c(-2,.2),
+  tau_mu_p = c(0,.5), tau_sigma_p = c(0,.3), tau_beta_p = c(0,.3)
   
 )
 
@@ -97,9 +97,9 @@ con_pred <-
       
       rexgaussian(
         nrow(post),
-        mu = post[ ,"InterceptMu_0"] + post[ ,paste0("r_mu[",d_seq$con$id[i],"]") ],
-        sigma = exp( post[ ,"InterceptSigma_0"] ),
-        beta = exp( post[ ,"InterceptBeta_0"] )
+        mu = exp( post[ ,"InterceptMu_0"] + post[ ,paste0("r_mu[",d_seq$con$id[i],"]") ] ),
+        sigma = exp( post[ ,"InterceptSigma_0"] + post[ ,paste0("r_sigma[",d_seq$con$id[i],"]") ] ),
+        beta = exp( post[ ,"InterceptBeta_0"] + post[ ,paste0("r_beta[",d_seq$con$id[i],"]") ] )
       )
 
     }
@@ -117,15 +117,19 @@ exp_pred <-
       
       rexgaussian(
         nrow(post),
-        mu = post[ ,"InterceptMu_1"] + post[ ,paste0("r_mu[",d_seq$con$id[i],"]") ],
-        sigma = exp( post[ ,"InterceptSigma_1"] ),
-        beta = exp( post[ ,"InterceptBeta_1"] )
+        mu = exp( post[ ,"InterceptMu_1"] + post[ ,paste0("r_mu[",d_seq$con$id[i],"]") ] ),
+        sigma = exp( post[ ,"InterceptSigma_1"] + post[ ,paste0("r_sigma[",d_seq$con$id[i],"]") ] ),
+        beta = exp( post[ ,"InterceptBeta_1"] + post[ ,paste0("r_beta[",d_seq$con$id[i],"]") ] )
       )
       
     }
   )
 
 # check posterior stats
-d_seq <- do.call( rbind.data.frame, d_seq ) %>% mutate( conid = paste0(cond,"_",id) )
-ppc_stat_grouped( y = d_seq$rt, yrep = cbind(con_pred,exp_pred), group = d_seq$conid, stat = "mean" )
-ppc_dens_overlay_grouped( y = d_seq$rt, yrep = cbind(con_pred,exp_pred)[ sample(1:4000,100) , ], group = d_seq$conid )
+d_pred <-
+  do.call( rbind.data.frame, d_seq ) %>%
+  mutate( conid = paste0(cond,"_",id) ) %>%
+  mutate( conid = factor( conid, levels = c( paste0("con_",1:4), paste0("exp_",1:4), paste0("con_",5:8), paste0("exp_",5:8) ), ordered = T ) )
+
+ppc_stat_grouped( y = d_pred$rt, yrep = cbind(con_pred,exp_pred), group = d_pred$conid, stat = "mean" )
+ppc_dens_overlay_grouped( y = d_pred$rt, yrep = cbind(con_pred,exp_pred)[ sample(1:4000,100) , ], group = d_pred$conid )
