@@ -1,6 +1,6 @@
 //
 // This Stan program defines an Exponentially modified Gaussian
-// model of Stop Signal Response Time data including
+// model of Stop Signal Response Time 'Go' trials data including
 // global (i.e., 'fixed effect') Intercepts
 // and participant-level deviations separately
 // for experimental and control runs
@@ -42,12 +42,12 @@ data {
 parameters {
   
   // intercepts for control condition
-  real<lower=0> InterceptMu_0;
+  real InterceptMu_0;
   real InterceptSigma_0;
   real InterceptBeta_0;
   
   // intercepts for experimental condition
-  real<lower=0> InterceptMu_1;
+  real InterceptMu_1;
   real InterceptSigma_1;
   real InterceptBeta_1;
   

@@ -1,4 +1,4 @@
-# This script is used to diagnose ExGaussian model of SSRT data implemented in Stan.
+# This script is used to run ExGaussian model of SSRT data implemented in Stan.
 
 rm( list = ls() )
 options( mc.cores = parallel::detectCores() )
@@ -8,9 +8,12 @@ options( mc.cores = parallel::detectCores() )
 
 library(here)
 library(tidyverse)
-library(brms)
+library(brms) # for rexgaussian()
 library(bayesplot)
 library(cmdstanr)
+
+# maximum time allow was 1.5 s
+rtmax <- 1.5
 
 # read data
 d0 <- read.csv( here("_data","ssrt_lab.csv"), sep = "," )
@@ -18,50 +21,51 @@ d0 <- read.csv( here("_data","ssrt_lab.csv"), sep = "," )
 # pivot it wider
 d1 <-
   d0 %>%
+  mutate( cens = ifelse( correct == "missed", "right", "none" ), max = rtmax ) %>% # add censoring info and maximum possible RTs
   filter( block != 0 ) %>%
-  select( id, block, cond, signal, rt1, trueSOA ) %>%
+  select( id, block, cond, signal, rt1, trueSOA, cens, max ) %>%
   rename( "rt" = "rt1", "ssd" = "trueSOA" ) %>%
-  mutate( across( c("rt","ssd"), ~ .x / 1e3 ) ) # re-scale from ms to s
+  mutate( across( c("rt","ssd"), ~ .x/1e3 ) ) # re-scale from ms to s
 
 # separate files for "go" and "stop" trials
 Dgo <- d1 %>% filter( signal == "nosignal" )
 Dsr <- d1 %>% filter( signal == "signal" & !is.na(rt) )
-Dna <- d1 %>% filter( signal == "signal" & is.na(rt) )
+Dna <- d1 %>% filter( signal == "signal" & is.na(rt) ) %>% mutate( rt = rtmax, cens = "right" )
 
-
-# PRIOR PREDICTION ----
-
-# prepare a function computing and summarising mean and sd of ExGaussian based on priors
-priorpred <- function( mu = c(.7,.5), sigma = c(-6,2), tau = c(-4.3,1.3), sd = c(0,.1), rep = 1e5 ) {
-  
-  m <- rnorm( rep, mu[1], mu[2] ) + rnorm( rep, 0, abs( rnorm( rep, sd[1], sd[2] ) ) ) + exp( rnorm( rep, tau[1], tau[2] ) )
-  sd <- sqrt( exp( rnorm( rep, sigma[1], sigma[2] ) )^2 + exp( rnorm( rep, tau[1], tau[2] ) )^2 )
-  
-  return( summary( cbind(M = m, SD = sd) ) )
-  
-}
 
 # MODEL FITTING ----
 
-# drop rows with missing data in Go trials
+# prepare data sets for model
 GOcon <- subset( Dgo, complete.cases(rt) & cond == "ctrl" ) %>% mutate( id = as.integer( as.factor(id) ) )
 GOexp <- subset( Dgo, complete.cases(rt) & cond == "exp" ) %>% mutate( id = as.integer( as.factor(id) ) ) 
+SRcon <- subset( Dsr, complete.cases(rt) & cond == "ctrl" & (rt>ssd) ) %>% mutate( id = as.integer( as.factor(id) ) )
+SRexp <- subset( Dsr, complete.cases(rt) & cond == "exp" & (rt>ssd) ) %>% mutate( id = as.integer( as.factor(id) ) )
+NAcon <- subset( Dna, cond == "ctrl" ) %>% mutate( id = as.integer( as.factor(id) ) )
+NAexp <- subset( Dna, cond == "exp" ) %>% mutate( id = as.integer( as.factor(id) ) )
 
 # prepare the model
-mod <- cmdstan_model( here("mods","ExGaussian_gonly.stan") )
+mod <- cmdstan_model( here("mods","ExGaussian_ssrt.stan") )
 
 # prepare input
 dlist <- list(
   
   # data
-  Y_0 = GOcon$rt, N_0 = nrow(GOcon), J_0 = GOcon$id, Z_0_1 = rep( 1, nrow(GOcon) ),
-  Y_1 = GOexp$rt, N_1 = nrow(GOexp), J_1 = GOexp$id, Z_1_1 = rep( 1, nrow(GOexp) ),
+  Y_0_go = GOcon$rt, N_0_go = nrow(GOcon), J_0_go = GOcon$id, Z_0_go = rep( 1, nrow(GOcon) ),
+  Y_1_go = GOexp$rt, N_1_go = nrow(GOexp), J_1_go = GOexp$id, Z_1_go = rep( 1, nrow(GOexp) ),
+  Y_0_sr = SRcon$rt, N_0_sr = nrow(SRcon), J_0_sr = SRcon$id, Z_0_sr = rep( 1, nrow(SRcon) ), SSD_0_sr = SRcon$ssd,
+  Y_1_sr = SRexp$rt, N_1_sr = nrow(SRexp), J_1_sr = SRexp$id, Z_1_sr = rep( 1, nrow(SRexp) ), SSD_1_sr = SRexp$ssd,
+  #Y_0_na = NAcon$rt, N_0_na = nrow(NAcon), J_0_na = NAcon$id, Z_0_na = rep( 1, nrow(NAcon) ), SSD_0_na = NAcon$ssd,
+  #Y_1_na = NAexp$rt, N_1_na = nrow(NAexp), J_1_na = NAexp$id, Z_1_na = rep( 1, nrow(NAexp) ), SSD_1_na = NAexp$ssd,
+  
   K = length( unique(GOcon$id) ), M = 1,
   
   # priors
-  mu_0p = c(-.4,.2), sigma_0p = c(-2,.2), beta_0p = c(-2,.2),
-  mu_1p = c(-.4,.2), sigma_1p = c(-2,.2), beta_1p = c(-2,.2),
-  tau_mu_p = c(0,.5), tau_sigma_p = c(0,.3), tau_beta_p = c(0,.3)
+  mu_go_0_p = c(-.4,.2), sigma_go_0_p = c(-2,.2), beta_go_0_p = c(-2,.2),
+  mu_go_1_p = c(-.4,.2), sigma_go_1_p = c(-2,.2), beta_go_1_p = c(-2,.2),
+  mu_stop_0_p = c(-.4,.2), sigma_stop_0_p = c(-2,.2), beta_stop_0_p = c(-2,.2),
+  mu_stop_1_p = c(-.4,.2), sigma_stop_1_p = c(-2,.2), beta_stop_1_p = c(-2,.2),
+  tau_mu_go_p = c(0,.5), tau_sigma_go_p = c(0,.3), tau_beta_go_p = c(0,.3),
+  tau_mu_stop_p = c(0,.5), tau_sigma_stop_p = c(0,.3), tau_beta_stop_p = c(0,.3)
   
 )
 
@@ -117,9 +121,9 @@ exp_pred <-
       
       rexgaussian(
         nrow(post),
-        mu = exp( post[ ,"InterceptMu_1"] + post[ ,paste0("r_mu[",d_seq$con$id[i],"]") ] ),
-        sigma = exp( post[ ,"InterceptSigma_1"] + post[ ,paste0("r_sigma[",d_seq$con$id[i],"]") ] ),
-        beta = exp( post[ ,"InterceptBeta_1"] + post[ ,paste0("r_beta[",d_seq$con$id[i],"]") ] )
+        mu = exp( post[ ,"InterceptMu_1"] + post[ ,paste0("r_1_mu[",d_seq$exp$id[i],"]") ] ),
+        sigma = exp( post[ ,"InterceptSigma_1"] + post[ ,paste0("r_1_sigma[",d_seq$exp$id[i],"]") ] ),
+        beta = exp( post[ ,"InterceptBeta_1"] + post[ ,paste0("r_1_beta[",d_seq$exp$id[i],"]") ] )
       )
       
     }
