@@ -12,11 +12,14 @@ library(brms) # for rexgaussian()
 library(bayesplot)
 library(cmdstanr)
 
-# maximum time allow was 1.5 s
-rtmax <- 1.5
+color_scheme_set("viridisA")
+theme_set( theme_bw() )
 
-# read data
-d0 <- read.csv( here("_data","ssrt_lab.csv"), sep = "," )
+
+# DATA PRE-PROCESSING ----
+
+rtmax <- 1.5 # maximum time allow was 1.5 s
+d0 <- read.csv( here("_data","ssrt_lab.csv"), sep = "," ) # read data
 
 # pivot it wider
 d1 <-
@@ -32,9 +35,6 @@ Dgo <- d1 %>% filter( signal == "nosignal" )
 Dsr <- d1 %>% filter( signal == "signal" & !is.na(rt) )
 Dna <- d1 %>% filter( signal == "signal" & is.na(rt) ) %>% mutate( rt = rtmax, cens = "right" )
 
-
-# MODEL FITTING ----
-
 # prepare data sets for model
 GOcon <- subset( Dgo, complete.cases(rt) & cond == "ctrl" ) %>% mutate( id = as.integer( as.factor(id) ) )
 GOexp <- subset( Dgo, complete.cases(rt) & cond == "exp" ) %>% mutate( id = as.integer( as.factor(id) ) ) 
@@ -43,8 +43,39 @@ SRexp <- subset( Dsr, complete.cases(rt) & cond == "exp" & (rt>ssd) ) %>% mutate
 NAcon <- subset( Dna, cond == "ctrl" ) %>% mutate( id = as.integer( as.factor(id) ) )
 NAexp <- subset( Dna, cond == "exp" ) %>% mutate( id = as.integer( as.factor(id) ) )
 
+
+# INDIVIDUAL MODEL ----
+
 # prepare the model
-mod <- cmdstan_model( here("mods","ExGaussian_ssrt.stan") )
+mod0 <- cmdstan_model( here("mods","ExGaussian_indy.stan") )
+
+# prepare input
+dlist0 <- list(
+  
+  # data
+  Y_0_go = GOcon[ GOcon$id == 1, "rt" ], N_0_go = nrow( subset(GOcon, id == 1) ),
+  Y_1_go = GOexp[ GOexp$id == 1, "rt" ], N_1_go = nrow( subset(GOexp, id == 1) ),
+  Y_0_sr = SRcon[ SRcon$id == 1, "rt" ], N_0_sr = nrow( subset(SRcon, id == 1) ), SSD_0_sr = SRcon[ SRcon$id == 1, "ssd" ],
+  Y_1_sr = SRexp[ SRexp$id == 1, "rt" ], N_1_sr = nrow( subset(SRexp, id == 1) ), SSD_1_sr = SRexp[ SRexp$id == 1, "ssd" ],
+  N_0_na = nrow( subset(NAcon, id == 1) ), SSD_0_na = NAcon[ NAcon$id == 1, "ssd" ], #Y_0_na = NAcon[ NAcon$id == 1, "rt" ],
+  N_1_na = nrow( subset(NAexp, id == 1) ), SSD_1_na = NAexp[ NAexp$id == 1, "ssd" ], #Y_1_na = NAexp[ NAexp$id == 1, "rt" ],
+  
+  # priors
+  mu_go_0_p = c(-.4,.2), sigma_go_0_p = c(-2,.2), beta_go_0_p = c(-2,.2),
+  mu_go_1_p = c(-.4,.2), sigma_go_1_p = c(-2,.2), beta_go_1_p = c(-2,.2),
+  mu_stop_0_p = c(-1,.2), sigma_stop_0_p = c(-2,.2), beta_stop_0_p = c(-2,.2),
+  mu_stop_1_p = c(-1,.2), sigma_stop_1_p = c(-2,.2), beta_stop_1_p = c(-2,.2)
+  
+)
+
+# fit the model
+fit0 <- mod0$sample( data = dlist0, chains = 4, save_warmup = T )
+
+
+# HIERARCHICAL MODEL ----
+
+# prepare the model
+mod <- cmdstan_model( here("mods","ExGaussian_hier.stan") )
 
 # prepare input
 dlist <- list(
@@ -54,26 +85,27 @@ dlist <- list(
   Y_1_go = GOexp$rt, N_1_go = nrow(GOexp), J_1_go = GOexp$id, Z_1_go = rep( 1, nrow(GOexp) ),
   Y_0_sr = SRcon$rt, N_0_sr = nrow(SRcon), J_0_sr = SRcon$id, Z_0_sr = rep( 1, nrow(SRcon) ), SSD_0_sr = SRcon$ssd,
   Y_1_sr = SRexp$rt, N_1_sr = nrow(SRexp), J_1_sr = SRexp$id, Z_1_sr = rep( 1, nrow(SRexp) ), SSD_1_sr = SRexp$ssd,
-  #Y_0_na = NAcon$rt, N_0_na = nrow(NAcon), J_0_na = NAcon$id, Z_0_na = rep( 1, nrow(NAcon) ), SSD_0_na = NAcon$ssd,
-  #Y_1_na = NAexp$rt, N_1_na = nrow(NAexp), J_1_na = NAexp$id, Z_1_na = rep( 1, nrow(NAexp) ), SSD_1_na = NAexp$ssd,
+  Y_0_na = NAcon$rt, N_0_na = nrow(NAcon), J_0_na = NAcon$id, Z_0_na = rep( 1, nrow(NAcon) ), SSD_0_na = NAcon$ssd,
+  Y_1_na = NAexp$rt, N_1_na = nrow(NAexp), J_1_na = NAexp$id, Z_1_na = rep( 1, nrow(NAexp) ), SSD_1_na = NAexp$ssd,
   
   K = length( unique(GOcon$id) ), M = 1,
   
   # priors
   mu_go_0_p = c(-.4,.2), sigma_go_0_p = c(-2,.2), beta_go_0_p = c(-2,.2),
   mu_go_1_p = c(-.4,.2), sigma_go_1_p = c(-2,.2), beta_go_1_p = c(-2,.2),
-  mu_stop_0_p = c(-.4,.2), sigma_stop_0_p = c(-2,.2), beta_stop_0_p = c(-2,.2),
-  mu_stop_1_p = c(-.4,.2), sigma_stop_1_p = c(-2,.2), beta_stop_1_p = c(-2,.2),
-  tau_mu_go_p = c(0,.5), tau_sigma_go_p = c(0,.3), tau_beta_go_p = c(0,.3),
-  tau_mu_stop_p = c(0,.5), tau_sigma_stop_p = c(0,.3), tau_beta_stop_p = c(0,.3)
+  mu_stop_0_p = c(-1.2,.2), sigma_stop_0_p = c(-2,.2), beta_stop_0_p = c(-2,.2),
+  mu_stop_1_p = c(-1.2,.2), sigma_stop_1_p = c(-2,.2), beta_stop_1_p = c(-2,.2),
+  tau_mu_go_p = c(0,.2), tau_sigma_go_p = c(0,.2), tau_beta_go_p = c(0,.2),
+  tau_mu_stop_p = c(0,.2), tau_sigma_stop_p = c(0,.2), tau_beta_stop_p = c(0,.2)
   
 )
 
 # fit the model
-fit <- mod$sample( data = dlist, chains = 4 )
+fit <- mod$sample( data = dlist, chains = 4, save_warmup = T )
 
 # check trace plots
-mcmc_trace( fit$draws() )
+mcmc_trace( fit$draws(), regex_pars = "mu_go_0" )
+mcmc_trace( fit$draws(), regex_pars = "mu_stop_0" )
 
 
 # POSTERIOR PREDICTION ----
@@ -82,12 +114,23 @@ mcmc_trace( fit$draws() )
 post <- fit$draws(format = "matrix")
 
 # predict separately results for control and experimental condition
-d_seq <- with(
-
-  dlist,
-  list( con = data.frame( rt = Y_0, id = J_0, cond = "con" ), exp = data.frame( rt = Y_1, id = J_1, cond = "exp" ) )
+d_seq <-
   
-)
+  with(
+    
+    dlist,
+    list(
+      con = list( go = data.frame( rt = Y_0_go, id = J_0_go, cond = "con" ),
+                  sr = data.frame( rt = Y_0_sr, id = J_0_sr, cond = "con" )
+                  ),
+      exp = list( go = data.frame( rt = Y_1_go, id = J_1_go, cond = "con" ),
+                  sr = data.frame( rt = Y_1_sr, id = J_1_sr, cond = "con" )
+                  )
+    )
+    
+  )
+
+# compute predictions
 
 # predict control condition data
 con_pred <-
