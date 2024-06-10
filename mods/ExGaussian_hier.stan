@@ -53,7 +53,7 @@ data {
   
   // data for participant-level parameters (shared across conditions)
   int<lower=1> K;  // number of participants
-  int<lower=1> M;  // number of coefficients per level
+  //int<lower=1> M;  // number of coefficients per level
   array[N_0_go] int<lower=1> J_0_go;  // grouping indicator per observation in control condition
   array[N_1_go] int<lower=1> J_1_go;  // grouping indicator per observation in experimental condition
   array[N_0_sr] int<lower=1> J_0_sr;  // grouping indicator per observation in control condition
@@ -123,39 +123,39 @@ parameters {
   
   // participant-level standard deviations
   // GO process
-  vector<lower=0>[M] tau_mu_go_0;
-  vector<lower=0>[M] tau_sigma_go_0;
-  vector<lower=0>[M] tau_beta_go_0;
-  vector<lower=0>[M] tau_mu_go_1;
-  vector<lower=0>[M] tau_sigma_go_1;
-  vector<lower=0>[M] tau_beta_go_1;
+  real tau_mu_go_0;
+  real tau_sigma_go_0;
+  real tau_beta_go_0;
+  real tau_mu_go_1;
+  real tau_sigma_go_1;
+  real tau_beta_go_1;
   
   // participant-level standard deviations
   // STOP process
-  vector<lower=0>[M] tau_mu_stop_0;
-  vector<lower=0>[M] tau_sigma_stop_0;
-  vector<lower=0>[M] tau_beta_stop_0;
-  vector<lower=0>[M] tau_mu_stop_1;
-  vector<lower=0>[M] tau_sigma_stop_1;
-  vector<lower=0>[M] tau_beta_stop_1;
+  real tau_mu_stop_0;
+  real tau_sigma_stop_0;
+  real tau_beta_stop_0;
+  real tau_mu_stop_1;
+  real tau_sigma_stop_1;
+  real tau_beta_stop_1;
   
   // standardized participant-level parameters
   // GO process
-  array[M] vector[K] z_mu_go_0;
-  array[M] vector[K] z_sigma_go_0;
-  array[M] vector[K] z_beta_go_0;
-  array[M] vector[K] z_mu_go_1;
-  array[M] vector[K] z_sigma_go_1;
-  array[M] vector[K] z_beta_go_1;
+  vector[K] z_mu_go_0;
+  vector[K] z_sigma_go_0;
+  vector[K] z_beta_go_0;
+  vector[K] z_mu_go_1;
+  vector[K] z_sigma_go_1;
+  vector[K] z_beta_go_1;
   
   // standardized participant-level parameters
   // STOP process
-  array[M] vector[K] z_mu_stop_0;
-  array[M] vector[K] z_sigma_stop_0;
-  array[M] vector[K] z_beta_stop_0;
-  array[M] vector[K] z_mu_stop_1;
-  array[M] vector[K] z_sigma_stop_1;
-  array[M] vector[K] z_beta_stop_1;
+  vector[K] z_mu_stop_0;
+  vector[K] z_sigma_stop_0;
+  vector[K] z_beta_stop_0;
+  vector[K] z_mu_stop_1;
+  vector[K] z_sigma_stop_1;
+  vector[K] z_beta_stop_1;
 
 }
 
@@ -163,33 +163,33 @@ transformed parameters {
   
   // actual group-level parameters
   // GO process
-  vector[K] r_mu_go_0;
-  vector[K] r_sigma_go_0;
-  vector[K] r_beta_go_0;
-  vector[K] r_mu_go_1;
-  vector[K] r_sigma_go_1;
-  vector[K] r_beta_go_1;
-  r_mu_go_0 = ( tau_mu_go_0[1] * (z_mu_go_0[1]) );
-  r_sigma_go_0 = ( tau_sigma_go_0[1] * (z_sigma_go_0[1]) );
-  r_beta_go_0 = ( tau_beta_go_0[1] * (z_beta_go_0[1]) );
-  r_mu_go_1 = ( tau_mu_go_1[1] * (z_mu_go_1[1]) );
-  r_sigma_go_1 = ( tau_sigma_go_1[1] * (z_sigma_go_1[1]) );
-  r_beta_go_1 = ( tau_beta_go_1[1] * (z_beta_go_1[1]) );
+  vector[K] r_mu_go_0 = rep_vector(0.0, K);
+  vector[K] r_sigma_go_0 = rep_vector(0.0, K);
+  vector[K] r_beta_go_0 = rep_vector(0.0, K);
+  vector[K] r_mu_go_1 = rep_vector(0.0, K);
+  vector[K] r_sigma_go_1 = rep_vector(0.0, K);
+  vector[K] r_beta_go_1 = rep_vector(0.0, K);
+  r_mu_go_0 += ( exp(tau_mu_go_0) * (z_mu_go_0[1]) );
+  r_sigma_go_0 += ( exp(tau_sigma_go_0) * (z_sigma_go_0[1]) );
+  r_beta_go_0 += ( exp(tau_beta_go_0) * (z_beta_go_0[1]) );
+  r_mu_go_1 += ( exp(tau_mu_go_1) * (z_mu_go_1[1]) );
+  r_sigma_go_1 += ( exp(tau_sigma_go_1) * (z_sigma_go_1[1]) );
+  r_beta_go_1 += ( exp(tau_beta_go_1) * (z_beta_go_1[1]) );
   
   // actual group-level parameters
   // STOP process
-  vector[K] r_mu_stop_0;
-  vector[K] r_sigma_stop_0;
-  vector[K] r_beta_stop_0;
-  vector[K] r_mu_stop_1;
-  vector[K] r_sigma_stop_1;
-  vector[K] r_beta_stop_1;
-  r_mu_stop_0 = ( tau_mu_stop_0[1] * (z_mu_stop_0[1]) );
-  r_sigma_stop_0 = ( tau_sigma_stop_0[1] * (z_sigma_stop_0[1]) );
-  r_beta_stop_0 = ( tau_beta_stop_0[1] * (z_beta_stop_0[1]) );
-  r_mu_stop_1 = ( tau_mu_stop_1[1] * (z_mu_stop_1[1]) );
-  r_sigma_stop_1 = ( tau_sigma_stop_1[1] * (z_sigma_stop_1[1]) );
-  r_beta_stop_1 = ( tau_beta_stop_1[1] * (z_beta_stop_1[1]) );
+  vector[K] r_mu_stop_0 = rep_vector(0.0, K);
+  vector[K] r_sigma_stop_0 = rep_vector(0.0, K);
+  vector[K] r_beta_stop_0 = rep_vector(0.0, K);
+  vector[K] r_mu_stop_1 = rep_vector(0.0, K);
+  vector[K] r_sigma_stop_1 = rep_vector(0.0, K);
+  vector[K] r_beta_stop_1 = rep_vector(0.0, K);
+  r_mu_stop_0 += ( exp(tau_mu_stop_0) * (z_mu_stop_0[1]) );
+  r_sigma_stop_0 += ( exp(tau_sigma_stop_0) * (z_sigma_stop_0[1]) );
+  r_beta_stop_0 += ( exp(tau_beta_stop_0) * (z_beta_stop_0[1]) );
+  r_mu_stop_1 += ( exp(tau_mu_stop_1) * (z_mu_stop_1[1]) );
+  r_sigma_stop_1 += ( exp(tau_sigma_stop_1) * (z_sigma_stop_1[1]) );
+  r_beta_stop_1 += ( exp(tau_beta_stop_1) * (z_beta_stop_1[1]) );
   
   // prior contributions to the log posterior
   real lprior = 0;
@@ -211,20 +211,20 @@ transformed parameters {
   lprior += normal_lpdf( Int_beta_stop_1 | beta_stop_1_p[1], beta_stop_1_p[2] );
   
   // participant-level, control condition
-  lprior += normal_lpdf( tau_mu_go_0 | tau_mu_go_p[1], tau_mu_go_p[2] ) - 1 * normal_lccdf( 0 | tau_mu_go_p[1], tau_mu_go_p[2] );
-  lprior += normal_lpdf( tau_sigma_go_0 | tau_sigma_go_p[1], tau_sigma_go_p[2] ) - 1 * normal_lccdf( 0 | tau_sigma_go_p[1], tau_sigma_go_p[2] );
-  lprior += normal_lpdf( tau_beta_go_0 | tau_beta_go_p[1], tau_beta_go_p[2] ) - 1 * normal_lccdf( 0 | tau_beta_go_p[1], tau_beta_go_p[2] );
-  lprior += normal_lpdf( tau_mu_stop_0 | tau_mu_stop_p[1], tau_mu_stop_p[2] ) - 1 * normal_lccdf( 0 | tau_mu_stop_p[1], tau_mu_stop_p[2] );
-  lprior += normal_lpdf( tau_sigma_stop_0 | tau_sigma_stop_p[1], tau_sigma_stop_p[2] ) - 1 * normal_lccdf( 0 | tau_sigma_stop_p[1], tau_sigma_stop_p[2] );
-  lprior += normal_lpdf( tau_beta_stop_0 | tau_beta_stop_p[1], tau_beta_stop_p[2] ) - 1 * normal_lccdf( 0 | tau_beta_stop_p[1], tau_beta_stop_p[2] );
+  lprior += normal_lpdf( tau_mu_go_0 | tau_mu_go_p[1], tau_mu_go_p[2] );
+  lprior += normal_lpdf( tau_sigma_go_0 | tau_sigma_go_p[1], tau_sigma_go_p[2] );
+  lprior += normal_lpdf( tau_beta_go_0 | tau_beta_go_p[1], tau_beta_go_p[2] );
+  lprior += normal_lpdf( tau_mu_stop_0 | tau_mu_stop_p[1], tau_mu_stop_p[2] );
+  lprior += normal_lpdf( tau_sigma_stop_0 | tau_sigma_stop_p[1], tau_sigma_stop_p[2] );
+  lprior += normal_lpdf( tau_beta_stop_0 | tau_beta_stop_p[1], tau_beta_stop_p[2] );
   
   // participant-level, experimental condition
-  lprior += normal_lpdf( tau_mu_go_1 | tau_mu_go_p[1], tau_mu_go_p[2] ) - 1 * normal_lccdf( 0 | tau_mu_go_p[1], tau_mu_go_p[2] );
-  lprior += normal_lpdf( tau_sigma_go_1 | tau_sigma_go_p[1], tau_sigma_go_p[2] ) - 1 * normal_lccdf( 0 | tau_sigma_go_p[1], tau_sigma_go_p[2] );
-  lprior += normal_lpdf( tau_beta_go_1 | tau_beta_go_p[1], tau_beta_go_p[2] ) - 1 * normal_lccdf( 0 | tau_beta_go_p[1], tau_beta_go_p[2] );
-  lprior += normal_lpdf( tau_mu_stop_1 | tau_mu_stop_p[1], tau_mu_stop_p[2] ) - 1 * normal_lccdf( 0 | tau_mu_stop_p[1], tau_mu_stop_p[2] );
-  lprior += normal_lpdf( tau_sigma_stop_1 | tau_sigma_stop_p[1], tau_sigma_stop_p[2] ) - 1 * normal_lccdf( 0 | tau_sigma_stop_p[1], tau_sigma_stop_p[2] );
-  lprior += normal_lpdf( tau_beta_stop_1 | tau_beta_stop_p[1], tau_beta_stop_p[2] ) - 1 * normal_lccdf( 0 | tau_beta_stop_p[1], tau_beta_stop_p[2] );
+  lprior += normal_lpdf( tau_mu_go_1 | tau_mu_go_p[1], tau_mu_go_p[2] );
+  lprior += normal_lpdf( tau_sigma_go_1 | tau_sigma_go_p[1], tau_sigma_go_p[2] );
+  lprior += normal_lpdf( tau_beta_go_1 | tau_beta_go_p[1], tau_beta_go_p[2] );
+  lprior += normal_lpdf( tau_mu_stop_1 | tau_mu_stop_p[1], tau_mu_stop_p[2] );
+  lprior += normal_lpdf( tau_sigma_stop_1 | tau_sigma_stop_p[1], tau_sigma_stop_p[2] );
+  lprior += normal_lpdf( tau_beta_stop_1 | tau_beta_stop_p[1], tau_beta_stop_p[2] );
 
 }
 
@@ -337,7 +337,7 @@ model {
   //
   // add to the log likelihood
   for (n in 1:N_0_na) {
-    target += log( integrate_1d( integrand, negative_infinity(), positive_infinity(), { mu_na_go_0[n]-beta_na_go_0[n], sigma_na_go_0[n], inv(beta_na_go_0[n]), mu_na_stop_0[n]-beta_na_stop_0[n], sigma_na_stop_0[n], inv(beta_na_stop_0[n]), SSD_0_na[n] }, x_r, x_i ) );
+    target += log( integrate_1d( integrand, 0, 100, { mu_na_go_0[n]-beta_na_go_0[n], sigma_na_go_0[n], inv(beta_na_go_0[n]), mu_na_stop_0[n]-beta_na_stop_0[n], sigma_na_stop_0[n], inv(beta_na_stop_0[n]), SSD_0_na[n] }, x_r, x_i, .001 ) );
   }
   //
   // likelihood for the EXPERIMENTAL condition
@@ -447,7 +447,7 @@ model {
   //
   // add to the log likelihood
   for (n in 1:N_1_na) {
-    target += log( integrate_1d( integrand, negative_infinity(), positive_infinity(), { mu_na_go_1[n]-beta_na_go_1[n], sigma_na_go_1[n], inv(beta_na_go_1[n]), mu_na_stop_1[n]-beta_na_stop_1[n], sigma_na_stop_1[n], inv(beta_na_stop_1[n]), SSD_1_na[n] }, x_r, x_i ) );
+    target += log( integrate_1d( integrand, 0, 100, { mu_na_go_1[n]-beta_na_go_1[n], sigma_na_go_1[n], inv(beta_na_go_1[n]), mu_na_stop_1[n]-beta_na_stop_1[n], sigma_na_stop_1[n], inv(beta_na_stop_1[n]), SSD_1_na[n] }, x_r, x_i, .001 ) );
   }
 
   // add priors including constants

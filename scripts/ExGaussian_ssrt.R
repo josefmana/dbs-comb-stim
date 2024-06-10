@@ -61,47 +61,47 @@ dlist0 <- list(
   N_1_na = nrow( subset(NAexp, id == 1) ), SSD_1_na = NAexp[ NAexp$id == 1, "ssd" ], #Y_1_na = NAexp[ NAexp$id == 1, "rt" ],
   
   # priors
-  mu_go_0_p = c(-.4,.2), sigma_go_0_p = c(-2,.2), beta_go_0_p = c(-2,.2),
-  mu_go_1_p = c(-.4,.2), sigma_go_1_p = c(-2,.2), beta_go_1_p = c(-2,.2),
-  mu_stop_0_p = c(-1,.2), sigma_stop_0_p = c(-2,.2), beta_stop_0_p = c(-2,.2),
-  mu_stop_1_p = c(-1,.2), sigma_stop_1_p = c(-2,.2), beta_stop_1_p = c(-2,.2)
+  mu_go_0_p = c(-.4,.2), sigma_go_0_p = c(-2,.5), beta_go_0_p = c(-2,.5),
+  mu_go_1_p = c(-.4,.2), sigma_go_1_p = c(-2,.5), beta_go_1_p = c(-2,.5),
+  mu_stop_0_p = c(-2,.5), sigma_stop_0_p = c(-2,.5), beta_stop_0_p = c(-2,.5),
+  mu_stop_1_p = c(-2,.5), sigma_stop_1_p = c(-2,.5), beta_stop_1_p = c(-2,.5)
   
 )
 
-# fit the model
-fit0 <- mod0$sample( data = dlist0, chains = 4, save_warmup = T )
+fit0 <- mod0$sample( data = dlist0, chains = 4, save_warmup = T ) # fit the model
+mcmc_trace( fit0$draws() ) # check trace plots
 
 
 # HIERARCHICAL MODEL ----
 
 # prepare the model
-mod <- cmdstan_model( here("mods","ExGaussian_hier.stan") )
+mod1 <- cmdstan_model( here("mods","ExGaussian_hier.stan") )
 
 # prepare input
-dlist <- list(
+dlist1 <- list(
   
   # data
   Y_0_go = GOcon$rt, N_0_go = nrow(GOcon), J_0_go = GOcon$id, Z_0_go = rep( 1, nrow(GOcon) ),
   Y_1_go = GOexp$rt, N_1_go = nrow(GOexp), J_1_go = GOexp$id, Z_1_go = rep( 1, nrow(GOexp) ),
   Y_0_sr = SRcon$rt, N_0_sr = nrow(SRcon), J_0_sr = SRcon$id, Z_0_sr = rep( 1, nrow(SRcon) ), SSD_0_sr = SRcon$ssd,
   Y_1_sr = SRexp$rt, N_1_sr = nrow(SRexp), J_1_sr = SRexp$id, Z_1_sr = rep( 1, nrow(SRexp) ), SSD_1_sr = SRexp$ssd,
-  Y_0_na = NAcon$rt, N_0_na = nrow(NAcon), J_0_na = NAcon$id, Z_0_na = rep( 1, nrow(NAcon) ), SSD_0_na = NAcon$ssd,
-  Y_1_na = NAexp$rt, N_1_na = nrow(NAexp), J_1_na = NAexp$id, Z_1_na = rep( 1, nrow(NAexp) ), SSD_1_na = NAexp$ssd,
+  N_0_na = nrow(NAcon), J_0_na = NAcon$id, Z_0_na = rep( 1, nrow(NAcon) ), SSD_0_na = NAcon$ssd, #Y_0_na = NAcon$rt,
+  N_1_na = nrow(NAexp), J_1_na = NAexp$id, Z_1_na = rep( 1, nrow(NAexp) ), SSD_1_na = NAexp$ssd, #Y_1_na = NAexp$rt,
   
-  K = length( unique(GOcon$id) ), M = 1,
+  K = length( unique(GOcon$id) ),
   
   # priors
   mu_go_0_p = c(-.4,.2), sigma_go_0_p = c(-2,.2), beta_go_0_p = c(-2,.2),
   mu_go_1_p = c(-.4,.2), sigma_go_1_p = c(-2,.2), beta_go_1_p = c(-2,.2),
-  mu_stop_0_p = c(-1.2,.2), sigma_stop_0_p = c(-2,.2), beta_stop_0_p = c(-2,.2),
-  mu_stop_1_p = c(-1.2,.2), sigma_stop_1_p = c(-2,.2), beta_stop_1_p = c(-2,.2),
-  tau_mu_go_p = c(0,.2), tau_sigma_go_p = c(0,.2), tau_beta_go_p = c(0,.2),
-  tau_mu_stop_p = c(0,.2), tau_sigma_stop_p = c(0,.2), tau_beta_stop_p = c(0,.2)
+  mu_stop_0_p = c(-1,.2), sigma_stop_0_p = c(-2,.2), beta_stop_0_p = c(-2,.2),
+  mu_stop_1_p = c(-1,.2), sigma_stop_1_p = c(-2,.2), beta_stop_1_p = c(-2,.2),
+  tau_mu_go_p = c(-1,.2), tau_sigma_go_p = c(-1,.2), tau_beta_go_p = c(-1,.2),
+  tau_mu_stop_p = c(-1,.2), tau_sigma_stop_p = c(-1,.2), tau_beta_stop_p = c(-1,.2)
   
 )
 
 # fit the model
-fit <- mod$sample( data = dlist, chains = 4, save_warmup = T )
+fit1 <- mod1$sample( data = dlist1, chains = 4, save_warmup = T )
 
 # check trace plots
 mcmc_trace( fit$draws(), regex_pars = "mu_go_0" )
