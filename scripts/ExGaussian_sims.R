@@ -192,12 +192,12 @@ d0$data %>%
   theme(legend.position = "bottom")
 
 
-# FIT MODEL ----
+# FIT MODELS ----
 
 ## INDIVIUDAL EXGAUSSIAN MODEL ----
 
 # prepare the model
-mod1 <- cmdstan_model( here("mods","ExGaussian_individual.stan") )
+mod_indi <- cmdstan_model( here("mods","ExGaussian_individual.stan") )
 
 # function for manual initial values setting
 ifun <- function() list(
@@ -240,7 +240,7 @@ dlist1 <- list(
 
 
 # model fitting
-fit1 <- mod1$sample( data = dlist1, chains = 4, save_warmup = T, init = ifun )
+fit1 <- mod_indi$sample( data = dlist1, chains = 4, save_warmup = T, init = ifun )
 
 # results checking
 #mcmc_trace( fit1$draws(inc_warmup = T), n_warmup = 1e3 ) # trace plots
@@ -253,33 +253,91 @@ d1$parameters # true parameters
 # this chunk uses simulate data of a single participant
 # in an experiment much bigger than our real data to check
 # convergence in 'large' numbers
-d2 <- ssrt_data_sim(K = c(3e3,1e3), N = 1)
+#d2 <- ssrt_data_sim(K = c(3e3,1e3), N = 1)
 
 # prepare separate files for "go" and "signal-respond", and "successful inhibition" trials
-Dgo <- d2$data %>% filter( signal == 0 )
-Dsr <- d2$data %>% filter( signal == 1 & !is.na(rt) )
-Dna <- d2$data %>% filter( signal == 1 & is.na(rt) )
+#Dgo <- d2$data %>% filter( signal == 0 )
+#Dsr <- d2$data %>% filter( signal == 1 & !is.na(rt) )
+#Dna <- d2$data %>% filter( signal == 1 & is.na(rt) )
 
 # prepare input data
-dlist2 <- list(
+#dlist2 <- list(
+#  
+#  # data
+#  Y_0_go = Dgo$rt, N_0_go = nrow(Dgo),
+#  Y_0_sr = Dsr$rt, N_0_sr = nrow(Dsr), SSD_0_sr = Dsr$ssd,
+#  N_0_na = nrow(Dna), SSD_0_na = Dna$ssd,
+#  
+#  # priors
+#  mu_go_0_p = c(-0.4,0.2), sigma_go_0_p = c(-2.0,0.2), lambda_go_0_p = c(-2.0,0.2),
+#  mu_stop_0_p = c(-1.0,0.2), sigma_stop_0_p = c(-2.0,0.2), lambda_stop_0_p = c(-2.0,0.2)
+#  
+#)
+
+# model fitting
+#fit2 <- mod_indi$sample( data = dlist2, chains = 4, save_warmup = T, init = ifun )
+
+# results checking
+#mcmc_trace( fit2$draws(inc_warmup = T), n_warmup = 1e3 ) # trace plots
+#fit2$summary() # parameter estimates
+#d2$parameters # true parameters
+
+
+## HIERARCHICAL EXGAUSSIAN MODEL ----
+
+# prepare the model
+mod_hier <- cmdstan_model( here("mods","ExGaussian_hierarchical.stan") )
+
+# extract number of participants
+k <-  length( unique(d0$data$id) )
+
+# function for manual initial values setting
+ifun_hier <- function() list(
   
-  # data
-  Y_0_go = Dgo$rt, N_0_go = nrow(Dgo),
-  Y_0_sr = Dsr$rt, N_0_sr = nrow(Dsr), SSD_0_sr = Dsr$ssd,
-  N_0_na = nrow(Dna), SSD_0_na = Dna$ssd,
+  alpha_go_0 = runif(1,-2,0), beta_go_0 = runif(1,-2,0), gamma_go_0 = runif(1,-2,0),
+  alpha_stop_0 = runif(1,-2,0), beta_stop_0 = runif(1,-2,0), gamma_stop_0 = runif(1,-2,0),
   
-  # priors
-  mu_go_0_p = c(-0.4,0.2), sigma_go_0_p = c(-2.0,0.2), lambda_go_0_p = c(-2.0,0.2),
-  mu_stop_0_p = c(-1.0,0.2), sigma_stop_0_p = c(-2.0,0.2), lambda_stop_0_p = c(-2.0,0.2)
+  tau_go_0 = runif(1,-2,0), zeta_go_0 = runif(1,-2,0), epsilon_go_0 = runif(1,-2,0),
+  tau_stop_0 = runif(1,-2,0), zeta_stop_0 = runif(1,-2,0), epsilon_stop_0 = runif(1,-2,0),
+  
+  x_go_0 = rep(0,k), y_go_0 = rep(0,k), z_go_0 = rep(0,k),
+  x_stop_0 = rep(0,k), y_stop_0 = rep(0,k), z_stop_0 = rep(0,k)
   
 )
 
 
+### realistically sized data set ----
+
+# let us use the d0 file simulates before
+# prepare separate files for "go" and "signal-respond", and "successful inhibition" trials
+Dgo <- d0$data %>% filter( signal == 0 )
+Dsr <- d0$data %>% filter( signal == 1 & !is.na(rt) )
+Dna <- d0$data %>% filter( signal == 1 & is.na(rt) )
+
+# prepare input data
+dlist3 <- list(
+  
+  # data
+  N_0_go = nrow(Dgo), Y_0_go = Dgo$rt, J_0_go = Dgo$id,
+  N_0_sr = nrow(Dsr), Y_0_sr = Dsr$rt, SSD_0_sr = Dsr$ssd, J_0_sr = Dsr$id,
+  N_0_na = nrow(Dna), SSD_0_na = Dna$ssd, J_0_na = Dna$id,
+  K = k,
+  
+  # group-level priors
+  alpha_go_0_p = c(-0.4,0.2), beta_go_0_p = c(-2.0,0.2), gamma_go_0_p = c(-2.0,0.2),
+  alpha_stop_0_p = c(-1.0,0.2), beta_stop_0_p = c(-2.0,0.2), gamma_stop_0_p = c(-2.0,0.2),
+  
+  # participant-level priors
+  tau_go_0_p = c(-2.0,0.2), zeta_go_0_p = c(-2.0,0.2), epsilon_go_0_p = c(-2.0,0.2),
+  tau_stop_0_p = c(-2.0,0.2), zeta_stop_0_p = c(-2.0,0.2), epsilon_stop_0_p = c(-2.0,0.2)
+  
+)
+
 # model fitting
-fit2 <- mod1$sample( data = dlist2, chains = 4, save_warmup = T, init = ifun )
+fit3 <- mod_hier$sample( data = dlist3, chains = 4, save_warmup = T, init = ifun_hier )
 
 # results checking
-#mcmc_trace( fit2$draws(inc_warmup = T), n_warmup = 1e3 ) # trace plots
-fit2$summary() # parameter estimates
-d2$parameters # true parameters
+#mcmc_trace( fit3$draws(inc_warmup = T), n_warmup = 1e3 ) # trace plots
+fit3$summary() # parameter estimates
+d0$parameters # true parameters
 

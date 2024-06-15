@@ -51,7 +51,7 @@ data {
   vector[N_0_na] SSD_0_na;
   vector[N_1_na] SSD_1_na;
   
-  // data for participant-level parameters (shared across conditions)
+  // data for participant-level parameters
   int<lower=1> K;  // number of participants
   //int<lower=1> M;  // number of coefficients per level
   array[N_0_go] int<lower=1> J_0_go;  // grouping indicator per observation in control condition

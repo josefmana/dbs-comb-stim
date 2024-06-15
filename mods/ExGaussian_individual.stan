@@ -34,18 +34,17 @@ data {
   int<lower=1> N_0_sr;  // total number of observations in STOP-RESPOND data
   vector[N_0_sr] Y_0_sr;  // response variable in STOP-RESPOND data
   int<lower=1> N_0_na;  // total number of observations in SUCCESSFUL STOP data
-  //vector[N_0_na] Y_0_na;  // response variable in SUCCESSFUL STOP data
   
    // SSDs
-  vector[N_0_sr] SSD_0_sr;
-  vector[N_0_na] SSD_0_na;
+  vector[N_0_sr] SSD_0_sr; // vector od SSDs in STOP-RESPOND data
+  vector[N_0_na] SSD_0_na; // vector od SSDs in SUCCESSFUL STOP data
   
   // prior specifications
   // GO process
   vector[2] mu_go_0_p;
   vector[2] sigma_go_0_p;
   vector[2] lambda_go_0_p;
-  
+  //
   // prior specifications
   // STOP process
   vector[2] mu_stop_0_p;
