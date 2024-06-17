@@ -238,7 +238,6 @@ dlist1 <- list(
   
 )
 
-
 # model fitting
 fit1 <- mod_indi$sample( data = dlist1, chains = 4, save_warmup = T, init = ifun )
 
@@ -283,13 +282,82 @@ d1$parameters # true parameters
 #d2$parameters # true parameters
 
 
+### single model, many participants ----
+
+# loop through d0 data and fit the same individual model to each participant
+# extract number of participants
+k <- length( unique(d0$data$id) )
+
+# prepare a folder for the fits
+fit_many_indi <- list()
+
+# fit it
+for ( i in 1:k ) {
+  
+  # data
+  dGO <- subset(d0$data, id == i) %>% filter( signal == 0 )
+  dSR <- subset(d0$data, id == i) %>% filter( signal == 1 & !is.na(rt) )
+  dNA <- subset(d0$data, id == i) %>% filter( signal == 1 & is.na(rt) )
+  
+  # input file
+  dlist <- list(
+    
+    # data
+    Y_0_go = dGO$rt, N_0_go = nrow(dGO),
+    Y_0_sr = dSR$rt, N_0_sr = nrow(dSR), SSD_0_sr = dSR$ssd,
+    N_0_na = nrow(dNA), SSD_0_na = dNA$ssd,
+    
+    # priors
+    mu_go_0_p = c(-0.4,0.2), sigma_go_0_p = c(-2.0,0.2), lambda_go_0_p = c(-2.0,0.2),
+    mu_stop_0_p = c(-1.0,0.2), sigma_stop_0_p = c(-2.0,0.2), lambda_stop_0_p = c(-2.0,0.2)
+    
+  )
+  
+  # fitting proper
+  fit_many_indi[[i]] <- mod_indi$sample( data = dlist, chains = 4, save_warmup = T, init = ifun )
+  
+}
+
+# print median parameter estimates
+lapply(
+  
+  1:k,
+  function(i)
+    t( fit_many_indi[[i]]$summary()[ , c("variable","median") ] %>% column_to_rownames("variable") )
+  
+) %>%
+  
+  do.call( rbind, . ) %>%
+  `rownames<-`(1:k)
+
+# print the true values
+with(
+  
+  d0$parameters,
+  lapply(
+    
+    setNames( c("mu","sigma","lambda"), c("mu","sigma","lambda") ),
+    function(i)
+      
+      sapply(
+        1:k,
+        function(j)
+          c( go = get(i)[type == "global intercept" & racer == "go"] + get(i)[type == "subject-level variability" & racer == "go"] * get(i)[type == "varying effect" & racer == "go" & id == j],
+             stop = get(i)[type == "global intercept" & racer == "stop"] + get(i)[type == "subject-level variability" & racer == "stop"] * get(i)[type == "varying effect" & racer == "stop" & id == j]
+             )
+        
+      )
+  )
+)
+
+
 ## HIERARCHICAL EXGAUSSIAN MODEL ----
 
 # prepare the model
 mod_hier <- cmdstan_model( here("mods","ExGaussian_hierarchical.stan") )
 
 # extract number of participants
-k <-  length( unique(d0$data$id) )
+k <- length( unique(d0$data$id) )
 
 # function for manual initial values setting
 ifun_hier <- function() list(
