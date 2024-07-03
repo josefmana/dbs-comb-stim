@@ -181,7 +181,7 @@ model {
   lambda_go_go_0 = exp(lambda_go_go_0);
   //
   // add to the log likelihood
-  target += exp_mod_normal_lpdf(Y_0_go | mu_go_go_0-lambda_go_go_0, sigma_go_go_0, inv(lambda_go_go_0) );
+  target += exp_mod_normal_lpdf(Y_0_go | mu_go_go_0 - lambda_go_go_0, sigma_go_go_0, inv(lambda_go_go_0) );
   //
   // measurement model for STOP-RESPONSE trials
   //
@@ -220,8 +220,8 @@ model {
   lambda_sr_stop_0 = exp(lambda_sr_stop_0);
   //
   // add to the log likelihood
-  target += exp_mod_normal_lpdf( Y_0_sr | mu_sr_go_0-lambda_sr_go_0, sigma_sr_go_0, inv(lambda_sr_go_0) );
-  target += exp_mod_normal_lccdf( Y_0_sr-SSD_0_sr | mu_sr_stop_0-lambda_sr_stop_0, sigma_sr_stop_0, inv(lambda_sr_stop_0) );
+  target += exp_mod_normal_lpdf( Y_0_sr | mu_sr_go_0 - lambda_sr_go_0, sigma_sr_go_0, inv(lambda_sr_go_0) );
+  target += exp_mod_normal_lccdf( Y_0_sr - SSD_0_sr | mu_sr_stop_0 - lambda_sr_stop_0, sigma_sr_stop_0, inv(lambda_sr_stop_0) );
   //
   // measurement model for SUCCESSFUL-STOP trials
   //
@@ -260,7 +260,7 @@ model {
   //
   // add to the log likelihood
   for (n in 1:N_0_na) {
-    target += log( integrate_1d( integrand, 0, 10, { mu_na_go_0[n]-lambda_na_go_0[n], sigma_na_go_0[n], inv(lambda_na_go_0[n]), mu_na_stop_0[n]-lambda_na_stop_0[n], sigma_na_stop_0[n], inv(lambda_na_stop_0[n]), SSD_0_na[n] }, x_r, x_i, .001 ) );
+    target += log( integrate_1d( integrand, 0, 10, { mu_na_go_0[n] - lambda_na_go_0[n], sigma_na_go_0[n], inv(lambda_na_go_0[n]), mu_na_stop_0[n] - lambda_na_stop_0[n], sigma_na_stop_0[n], inv(lambda_na_stop_0[n]), SSD_0_na[n] }, x_r, x_i, .001 ) );
   }
   //
   // add priors including constants

@@ -22,18 +22,35 @@ rtmax <- 1.5 # maximum time allow was 1.5 s
 d0 <- read.csv( here("_data","ssrt_lab.csv"), sep = "," ) # read data
 
 # pivot it wider
-d1 <-
-  d0 %>%
+d1 <- d0 %>%
+  
   mutate( cens = ifelse( correct == "missed", "right", "none" ), max = rtmax ) %>% # add censoring info and maximum possible RTs
   filter( block != 0 ) %>%
-  select( id, block, cond, signal, rt1, trueSOA, cens, max ) %>%
+  select( id, block, cond, correct, signal, rt1, trueSOA, cens, max ) %>%
   rename( "rt" = "rt1", "ssd" = "trueSOA" ) %>%
   mutate( across( c("rt","ssd"), ~ .x/1e3 ) ) # re-scale from ms to s
 
+# GO response times should be generally slower than STOP-RESPOND response times
+d1 %>%
+  
+  # some formatting shinanigans
+  filter( complete.cases(rt) ) %>%
+  mutate( `Response type: ` = ifelse( signal == "nosignal", "GO", "SIGNAL-RESPOND" ) ) %>%
+  
+  # plot it
+  ggplot() +
+  aes(x = rt, colour = `Response type: `, linetype = cond ) +
+  geom_density(linewidth = 1) +
+  labs(x = "Response time (s)", y = "Density") +
+  scale_colour_manual( values = c("grey","black") ) +
+  facet_wrap(~id, ncol = 2) +
+  theme(legend.position = "bottom")
+
+
 # separate files for "go" and "stop" trials
-Dgo <- d1 %>% filter( signal == "nosignal" )
-Dsr <- d1 %>% filter( signal == "signal" & !is.na(rt) )
-Dna <- d1 %>% filter( signal == "signal" & is.na(rt) ) %>% mutate( rt = rtmax, cens = "right" )
+#Dgo <- d1 %>% filter( signal == "nosignal" )
+#Dsr <- d1 %>% filter( signal == "signal" & !is.na(rt) )
+#Dna <- d1 %>% filter( signal == "signal" & is.na(rt) ) %>% mutate( rt = rtmax, cens = "right" )
 
 # prepare data sets for model
 GOcon <- subset( Dgo, complete.cases(rt) & cond == "ctrl" ) %>% mutate( id = as.integer( as.factor(id) ) )

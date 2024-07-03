@@ -175,7 +175,7 @@ sum(d0$data$rt < 0, na.rm = T) / nrow(d0$data)
 t( sapply( unique(d0$data$id), function(i) table( subset(d0$data, signal == 1 & id == i)$response ) ) )
 
 # GO response times should be generally slower than STOP-RESPOND response times
-# under the assumption of the horee race model
+# under the assumption of the horse race model
 d0$data %>%
   
   # some formatting shinanigans
