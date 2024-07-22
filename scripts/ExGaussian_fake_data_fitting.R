@@ -6,6 +6,8 @@ options( mc.cores = parallel::detectCores() ) # set-up multiple cores
 
 # recommended running this is a fresh R session or restarting current session
 # install.packages( "cmdstanr", repos = c( "https://mc-stan.org/r-packages/", getOption("repos") ) )
+# install_cmdstan()
+# set_cmdstan_path()
 
 library(here)
 library(tidyverse)
@@ -16,7 +18,7 @@ library(ggh4x)
 color_scheme_set("viridisA")
 theme_set( theme_bw() )
 
-source("ExGaussian_fake_data_simulation.R") # read data generating function
+source( here("scripts","ExGaussian_fake_data_simulation.R") ) # read data generating function
 
 
 # UTILS ----

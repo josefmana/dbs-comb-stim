@@ -10,11 +10,12 @@ library(here)
 library(tidyverse)
 library(bayesplot)
 library(cmdstanr)
+library(ggh4x)
 
 color_scheme_set("viridisA")
-theme_set( theme_bw(base_size = 14) )
+theme_set( theme_bw(base_size = 12) )
 
-source("ExGaussian_fake_data_simulation.R") # read data generating function
+source( here("scripts","ExGaussian_fake_data_simulation.R") ) # read data generating function
 
 
 # DATA PRE-PROCESSING ----
@@ -60,10 +61,10 @@ d1 %>%
   
   # plot it
   ggplot() +
-  aes(x = rt, fill = `Stimulation type: `  ) +
+  aes(x = rt, fill = `Response type: `  ) +
   geom_density(alpha = .3) +
   labs(x = "Response time (s)", y = "Density") +
-  facet_grid( id ~ `Response type: ` ) +
+  facet_grid2(id ~ `Stimulation type: `, scales = "free_y", independent = F) +
   theme( legend.position = "bottom", panel.grid = element_blank() )
 
 
@@ -122,7 +123,9 @@ for ( i in k ) for ( x in c("ctrl","exp") ) {
 # and occasional non-converging chain.
 
 
-## posterior prediction for densities ----
+## POSTERIOR PREDICTIVE CHECK ----
+
+### ---- posterior prediction via densities ----
 ppc_density <- function(data, type, preds, cols, tit) lapply(
   
   names(preds),
@@ -157,6 +160,17 @@ ppc_density <- function(data, type, preds, cols, tit) lapply(
   )
 
 
+### ---- observed data ----
+
+d2 <-
+  subset(d1, correct != "missed") %>%
+  mutate( signal = if_else(signal == "signal", 1, 0) ) %>%
+  filter( !( rt < ssd & signal == 1 & !is.na(rt) ) )
+
+
+### ---- parameters for control condition ----
+
+# prepare model fits
 fit_con <- lapply(
   
   setNames( names(fit_many_indi), names(fit_many_indi) ),
@@ -165,14 +179,7 @@ fit_con <- lapply(
   
 )
 
-fit_exp <- lapply(
-  
-  setNames( names(fit_many_indi), names(fit_many_indi) ),
-  function(x)
-    fit_many_indi[[x]]$exp
-  
-)
-
+# extract estimates
 estCON <- lapply(
   
   names(fit_con),
@@ -189,26 +196,7 @@ estCON <- lapply(
   mutate( name = sub("Int_", "", ( sub("_0","",name) ) ) ) %>%
   mutate( type = sub(".*_", "", name), parameter = sub("_.*", "", name), ID = as.character(ID) )
 
-estEXP <- lapply(
-  
-  names(fit_exp),
-  function(i)
-    
-    fit_exp[[i]]$draws(format = "data.frame") %>%
-    select( starts_with("Int"), .chain, .iteration ) %>%
-    mutate(ID = i, .before = 1)
-  
-) %>%
-  
-  do.call( rbind.data.frame, . ) %>%
-  pivot_longer( starts_with("Int"), values_to = "value", names_to = "name" ) %>%
-  mutate( name = sub("Int_", "", ( sub("_0","",name) ) ) ) %>%
-  mutate( type = sub(".*_", "", name), parameter = sub("_.*", "", name), ID = as.character(ID) )
-
-d2 <-
-  subset(d1, correct != "missed") %>%
-  mutate( signal = if_else(signal == "signal", 1, 0) )
-
+# extract posterior predictions
 ppredCON <- lapply(
   
   setNames( names(fit_con), names(fit_con) ), # one for each participant
@@ -250,19 +238,41 @@ ppredCON <- lapply(
         ) )
         
       }
-      
     ) %>% t()
-    
     
   }
 )
 
-ppc_density(subset(d2, cond == "ctrl"), type = 0, preds = ppredCON, cols = c("red4","lightpink"), tit = "GO TRIALS")
-ppc_density(subset(d2, cond == "ctrl"), type = 1, preds = ppredCON, cols = c("blue4","lightblue"), tit = "SIGNAL-RESPOND TRIALS")
 
+### ---- parameters for experimental condition ----
 
+# prepare model fits
+fit_exp <- lapply(
+  
+  setNames( names(fit_many_indi), names(fit_many_indi) ),
+  function(x)
+    fit_many_indi[[x]]$exp
+  
+)
 
+# extract estimates
+estEXP <- lapply(
+  
+  names(fit_exp),
+  function(i)
+    
+    fit_exp[[i]]$draws(format = "data.frame") %>%
+    select( starts_with("Int"), .chain, .iteration ) %>%
+    mutate(ID = i, .before = 1)
+  
+) %>%
+  
+  do.call( rbind.data.frame, . ) %>%
+  pivot_longer( starts_with("Int"), values_to = "value", names_to = "name" ) %>%
+  mutate( name = sub("Int_", "", ( sub("_0","",name) ) ) ) %>%
+  mutate( type = sub(".*_", "", name), parameter = sub("_.*", "", name), ID = as.character(ID) )
 
+# extract posterior predictions
 ppredEXP <- lapply(
   
   setNames( names(fit_exp), names(fit_exp) ), # one for each participant
@@ -306,10 +316,13 @@ ppredEXP <- lapply(
       }
       
     ) %>% t()
-    
-    
   }
 )
 
+
+### ---- show densities ----
+
+ppc_density(subset(d2, cond == "ctrl"), type = 0, preds = ppredCON, cols = c("red4","lightpink"), tit = "GO TRIALS")
+ppc_density(subset(d2, cond == "ctrl"), type = 1, preds = ppredCON, cols = c("blue4","lightblue"), tit = "SIGNAL-RESPOND TRIALS")
 ppc_density(subset(d2, cond == "exp"), type = 0, preds = ppredEXP, cols = c("red4","lightpink"), tit = "GO TRIALS")
 ppc_density(subset(d2, cond == "exp"), type = 1, preds = ppredEXP, cols = c("blue4","lightblue"), tit = "SIGNAL-RESPOND TRIALS")
