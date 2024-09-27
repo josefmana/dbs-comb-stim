@@ -5,25 +5,27 @@ library(brms) # for rexgaussian()
 
 # DATA SIMULATION FUNCTION ----
 
-ssrt_data_sim <- function( alpha_go = c(-0.4,0.2), # global intercept of the go racer mu parameter
-                           alpha_stop = c(-1.0,0.2), # global intercept of the stop racer mu parameter
-                           beta_go = c(-2.0,0.2), # global intercept of the go racer sigma parameter
-                           beta_stop = c(-2.0,0.2), # global intercept of the stop racer sigma parameter
-                           gamma_go = c(-2.0,0.2), # global intercept of the go racer lambda parameter
-                           gamma_stop = c(-2.0,0.2), # global intercept of the stop racer lambda parameter
-                           tau_go = c(-2.0,0.2), # subject-level standard deviation of the go racer mu parameter
-                           tau_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer mu parameter
-                           zeta_go = c(-2.0,0.2), # subject-level standard deviation of the go racer sigma parameter
-                           zeta_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer sigma parameter
-                           epsilon_go = c(-2.0,0.2), # subject-level standard deviation of the go racer lambda parameter
-                           epsilon_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer lambda parameter
-                           N = 8, # number of subjects
-                           K = c(216,72), # number of go/stop-signal trials
-                           S = NULL, # set of seeds, either a vector of length 18
-                           df = NULL # a fixed data set for posterior predictive checks
-                           ) {
+ssrt_data_sim <- function(
   
-
+  alpha_go = c(-0.4,0.2), # global intercept of the go racer mu parameter
+  alpha_stop = c(-1.0,0.2), # global intercept of the stop racer mu parameter
+  beta_go = c(-2.0,0.2), # global intercept of the go racer sigma parameter
+  beta_stop = c(-2.0,0.2), # global intercept of the stop racer sigma parameter
+  gamma_go = c(-2.0,0.2), # global intercept of the go racer lambda parameter
+  gamma_stop = c(-2.0,0.2), # global intercept of the stop racer lambda parameter
+  tau_go = c(-2.0,0.2), # subject-level standard deviation of the go racer mu parameter
+  tau_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer mu parameter
+  zeta_go = c(-2.0,0.2), # subject-level standard deviation of the go racer sigma parameter
+  zeta_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer sigma parameter
+  epsilon_go = c(-2.0,0.2), # subject-level standard deviation of the go racer lambda parameter
+  epsilon_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer lambda parameter
+  N = 8, # number of subjects
+  K = c(216,72), # number of go/stop-signal trials
+  S = NULL, # set of seeds, either a vector of length 18
+  df = NULL # a fixed data set for posterior predictive checks
+  
+) {
+  
   ## SAMPLE EXGAUSSIAN PARAMETERS ----
   
   # prepare seeds
@@ -31,15 +33,17 @@ ssrt_data_sim <- function( alpha_go = c(-0.4,0.2), # global intercept of the go 
   
   # make a matrix of it
   S <- matrix(
-    S,
+
+    data = S,
     ncol = 2,
     byrow = T,
     dimnames = list(
       x = c("alpha","beta","gamma","tau","zeta","epsilon","x","y","z"),
       y = c("GO","STOP")
     )
+
   )
-    
+  
   # sample global intercepts
   set.seed(S["alpha","GO"]); alphaGO <- rnorm( 1, alpha_go[1], alpha_go[2] )
   set.seed(S["alpha","STOP"]); alphaSTOP <- rnorm( 1, alpha_stop[1], alpha_stop[2] )
@@ -129,48 +133,50 @@ ssrt_data_sim <- function( alpha_go = c(-0.4,0.2), # global intercept of the go 
   
   ### ---- FILL-IN RESPONSES ----
   
-  # loop through all the rows of the output matrix
+  # pre-allocate GO and STOP finish times to save time
+  out <- cbind(
+    
+    out,
+    do.call(
+      
+      rbind, lapply(
+        
+        X = unique(out[ ,"id"]),
+        FUN = function(i) cbind(
+          
+          goFT = rexgaussian( nrow(out[ out[ ,"id"] == i, ]), muGO[i], sigmaGO[i], lambdaGO[i] ),
+          stopFT = rexgaussian( nrow(out[ out[ ,"id"] == i, ]), muSTOP[i], sigmaSTOP[i], lambdaSTOP[i] ),
+          winner = NA # a column for the race winner
+          
+        )
+      )
+    )
+  )
+  
+  # decide winner of each SIGNAL trial and fill-in SSDs following a staircase procedure accordingly
   for ( i in 1:nrow(out) ) {
     
-    #### ---- GO TRIALS ----
-    
-    if( out[i, "signal"] == 0 ) {
-      
-      out[i, "response"] <- 1 # assume correct response
-      out[i, "rt"] <- rexgaussian(1, muGO[out[i,"id"]], sigmaGO[out[i,"id"]], lambdaGO[out[i,"id"]] ) # sample response time
-      
-      #### ---- STOP TRIALS ----
-      
-    } else if( out[i, "signal"] == 1 ) {
+    if( out[i, "signal"] == 0 ) next
+    else {
       
       # set-up initial SSD if it is subject's first stop-signal trial
       if( out[i, "trial"] == min( signal_trials[ , out[i,"id"]] ) ) SSD <- .3
       
-      # write down SSD for this trial
-      out[i, "ssd"] <- SSD
+      # calculate quantities of interest
+      out[i, "ssd"] <- SSD # write down SSD for this trial
+      out[i, "winner"] <- ifelse( (out[i, "stopFT"] + out[i, "ssd"]) < out[i, "goFT"], 1, 0) # decide a winner: 1 = STOP, 0 = GO (need to be numeric in a matrix)
       
-      # sample finishing times of GO and STOP racers
-      goFT <- rexgaussian(1, muGO[out[i,"id"]], sigmaGO[out[i,"id"]], lambdaGO[out[i,"id"]] )
-      stopFT <- SSD + rexgaussian(1, muSTOP[out[i,"id"]], sigmaSTOP[out[i,"id"]], lambdaSTOP[out[i,"id"]] )
+      # update SSD
+      SSD <- ifelse(out[i, "winner"] == 1, SSD + .05, SSD - .05)
       
-      # fill-in the rest depending on the winner
-      # if GO racer wins
-      if (goFT < stopFT) {
-        
-        out[i, "response"] <- 1 # incorrect response is recorded
-        out[i, "rt"] <- goFT # with GO racer finishing time as the response time
-        SSD <- SSD - .05 # make it easier during the next trial
-        
-        # else if STOP racer wins
-      } else if (stopFT < goFT) {
-        
-        out[i, "response"] <- 0 # correct non-response with no response time is recorded
-        SSD <- SSD + .05 # make it harder during the next trial
-      }
     }
-    
   }
   
+  # fill-in responses and their times
+  out[ , "response"] <- ifelse(out[ , "signal"] == 1, ifelse(out[ , "winner"] == 1, 0, 1), 1)
+  out[ , "rt"] <- ifelse( out[ , "signal"] == 0, out[ , "goFT"], ifelse(out[ , "winner"] == 1, NA, out[ , "stopFT"] ) )
+
+
   ## PREPARE THE OUTCOMES ----
   
   # ExGaussian racers' parameters
