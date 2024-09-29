@@ -21,7 +21,7 @@ ssrt_data_sim <- function(
   epsilon_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer lambda parameter
   N = 8, # number of subjects
   K = c(216,72), # number of go/stop-signal trials
-  S = NULL, # set of seeds, either a vector of length 18
+  seeds = list(pars = NULL, data = c(GO = NA, STOP = NA) ), # set of seeds, list with either a vector of length 18 or NA for parameters ('pars') and separate seeds for go and stop finish time distributions ('data')
   df = NULL # a fixed data set for posterior predictive checks
   
 ) {
@@ -29,12 +29,13 @@ ssrt_data_sim <- function(
   ## SAMPLE EXGAUSSIAN PARAMETERS ----
   
   # prepare seeds
-  if ( is.null(S) ) S <- sample(x = 1:1e9, size = 18, replace = F)
+  if ( is.null(seeds$pars) ) S_pars <- sample(x = 1:1e9, size = 18, replace = F) else S_pars <- seeds$pars # parameters
+  S_dats <- sapply(names(seeds$data), function(i) ifelse( is.na(seeds$data[i]), sample(1:1e9, 1), seeds$data[i] ), USE.NAMES = F) # data
   
   # make a matrix of it
   S <- matrix(
 
-    data = S,
+    data = S_pars,
     ncol = 2,
     byrow = T,
     dimnames = list(
@@ -142,13 +143,16 @@ ssrt_data_sim <- function(
       rbind, lapply(
         
         X = unique(out[ ,"id"]),
-        FUN = function(i) cbind(
+        FUN = function(i) {
           
-          goFT = rexgaussian( nrow(out[ out[ ,"id"] == i, ]), muGO[i], sigmaGO[i], lambdaGO[i] ),
-          stopFT = rexgaussian( nrow(out[ out[ ,"id"] == i, ]), muSTOP[i], sigmaSTOP[i], lambdaSTOP[i] ),
-          winner = NA # a column for the race winner
+          # sample finishing times
+          set.seed(S_dats["GO"]); goFT <- rexgaussian( nrow(out[ out[ ,"id"] == i, ]), muGO[i], sigmaGO[i], lambdaGO[i] ) # GO racer
+          set.seed(S_dats["STOP"]); stopFT <- rexgaussian( nrow(out[ out[ ,"id"] == i, ]), muSTOP[i], sigmaSTOP[i], lambdaSTOP[i] ) # STOP racer
           
-        )
+          # return a matrix
+          return( cbind(goFT = goFT, stopFT = stopFT, winner = NA) )
+          
+        }
       )
     )
   )
@@ -177,7 +181,7 @@ ssrt_data_sim <- function(
   out[ , "rt"] <- ifelse( out[ , "signal"] == 0, out[ , "goFT"], ifelse(out[ , "winner"] == 1, NA, out[ , "stopFT"] ) )
 
 
-  ## PREPARE THE OUTCOMES ----
+  ## PREPARE THE OUTPUT ----
   
   # ExGaussian racers' parameters
   pars <- data.frame(
@@ -195,7 +199,7 @@ ssrt_data_sim <- function(
   dats <- as.data.frame(out)
   
   # return list of parameters and data
-  return( list( seeds = S, parameters = pars, data = dats ) )
+  return( list( seeds = list(parameters = S_pars, data = S_dats), parameters = pars, data = dats ) )
   
 }
 
