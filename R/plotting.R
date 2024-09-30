@@ -1,8 +1,5 @@
 # In this script I prepare in-house functions used for plotting throught the project
 
-library(tidyverse)
-library(ggh4x)
-
 
 # ---- SANITY CHECK PLOT ----
 

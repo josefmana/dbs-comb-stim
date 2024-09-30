@@ -2,8 +2,11 @@
 mods/**/*.rds
 **/.DS_Store
 
-# ignore all _* folders but not _* files
+# ignore all _* folders
 _*/
+
+# ignore the pipeline figure (will be used for ReadMe though)
+pipeline.jpeg
 
 ##################
 # R-specific files

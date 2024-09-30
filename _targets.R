@@ -62,7 +62,7 @@ list(
   tar_target( recoplot3, reco_hist( data = subset(pars0, ID %in% 17:24), quants = c("mean", "sd") ) ),
   
   # posterior predictive check
-  tar_target( ppred, ppred_calc(fit0, pars0) ),
+  tar_target( ppred, ppred_calc(fit0, pars0, d0$data) ),
   tar_target( ppc_dens, ppc_density(d0$data, ppred, cols = c("red4","blue4","lightpink2","skyblue2"), ncols = 4, ndrws = 50) )
 
 )

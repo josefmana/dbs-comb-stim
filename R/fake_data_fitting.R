@@ -105,7 +105,7 @@ indi_fit <- function(data, model) {
       
       # prepare a folder for the outcome
       folder <- here( "_sims", paste0("indi_fake_subject_no_",i) )
-      if( dir.exists(folder) ) unlink(folder)
+      if( dir.exists(folder) ) unlink(folder, recursive = T)
       dir.create(folder)
       
       # fitting proper
@@ -166,7 +166,7 @@ get_pars <- function(fit, truth, data) left_join(
   # data-generating values
   y = with( truth, lapply(
     
-    1:k, function(i)
+    1:length(fit), function(i)
       
       sapply(
         
@@ -212,7 +212,7 @@ get_pars <- function(fit, truth, data) left_join(
 # ---- POSTERIOR PREDICTION ----
 
 # extract a set of posterior predictions
-ppred_calc <- function(fit, pars) lapply(
+ppred_calc <- function(fit, pars, data) lapply(
   
   1:length(fit), # one for each participant
   function(i) {
@@ -248,7 +248,7 @@ ppred_calc <- function(fit, pars) lapply(
             epsilon_go = c(0, 0),
             epsilon_stop = c(0, 0),
             N = 1,
-            df = subset(d0$data, id == i) %>% mutate(id = 1, rt = NA) %>% select(-ends_with("FT"), -winner)
+            df = subset(data, id == i) %>% mutate(id = 1, rt = NA) %>% select(-ends_with("FT"), -winner)
           )$data$rt
           
         ) )
