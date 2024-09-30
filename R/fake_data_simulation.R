@@ -1,10 +1,5 @@
 # This script defines a function that simulates SSRT data based on two racers model.
 
-library(brms) # for rexgaussian()
-
-
-# DATA SIMULATION FUNCTION ----
-
 ssrt_data_sim <- function(
   
   alpha_go = c(-0.4,0.2), # global intercept of the go racer mu parameter

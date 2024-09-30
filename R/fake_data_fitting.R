@@ -1,11 +1,6 @@
 # This script is used to simulate SSRT data from the assumed data-generating process
 # and fit Stan models with the same structure on the data
-
-rm( list = ls() ) # clear environment
-options( mc.cores = parallel::detectCores() ) # set-up multiple cores
-
-skip <- T # Skip model fitting if the model was already saved?
-
+#
 # recommended running this is a fresh R session or restarting current session
 # install.packages( "cmdstanr", repos = c( "https://mc-stan.org/r-packages/", getOption("repos") ) )
 # install_cmdstan(version = "2.34.1")
@@ -14,21 +9,7 @@ skip <- T # Skip model fitting if the model was already saved?
 # Important note: I was able to run the models successfully using cmdstanr version 2.34.1 on three different machines
 # (one MacStudio and two MacBooks Pro, all with M1 or M2 processors), however, newer versions of cmdstanr stopped the chains
 # due to the numerical integral not converging (using the same Stan code) and chains finishing unexpectedly!
-
-library(here)
-library(tidyverse)
-#library(bayesplot)
-library(cmdstanr)
-library(ggh4x)
-
-color_scheme_set("viridisA")
-theme_set( theme_bw() )
-
-if ( !dir.exists("sims") ) dir.create("sims") # folder for simulation results
-
-source( here("scripts","fake_data_simulation.R") ) # read data generating function
-source( here("scripts","utils.R") ) # utility functions
-
+#
 # In the next sections I generate data, fit models, do some posterior predictive checks, and parameter recovery checks.
 # In the data used, there are 24 synthetic participants with realistic sample sizes (based on the real experiment) to get
 # and idea of models' recovery properties and split them to chunks of eight (initial real sample size)
@@ -41,12 +22,9 @@ source( here("scripts","utils.R") ) # utility functions
 # Since the code runs for quite some time, it is possible to read results generated on my laptop instead of running
 # the analysis on yours (and the fitting section marked below by 'can be skipped' may be skipped):
 
-if( file.exists( here("sims","ExGaussian_base.rds") ) ) fit0 <- readRDS( file = here("sims","ExGaussian_base.rds") )
 
-# prepare the model
-mod <- cmdstan_model( here("mods","ExGaussian_individual.stan") ) 
+# ---- MANUAL INITIAL VALUES SETTINGS ----
 
-# function for manual initial values setting
 ifun <- function() list(
   
   Int_mu_go_0 = runif(1,-2,0),
@@ -59,63 +37,57 @@ ifun <- function() list(
 )
 
 
-# MANY PARTICIPANTS, REALISTIC DATA ----
+# ---- SANITY CHECKS ----
 
-# generate data
-# use default priors and default experiment length for 24 subjects
-# setting priors of population-level variance to -Inf which translates to 0 on the log scale
-# to ignore the hierarchical structure for now
-d0 <- d0 <- ssrt_data_sim(
-
-  tau_go = c(-Inf,0), tau_stop = c(-Inf,0),
-  zeta_go = c(-Inf,0), zeta_stop = c(-Inf,0),
-  epsilon_go = c(-Inf,0), epsilon_stop = c(-Inf,0),
-  seeds = list(pars = 101:118, data = c(GO = 15, STOP = 68) ),
-  N = 24
-
+fake_data_sums <- function(data, wait) with(
+  
+  data, {
+    
+    print( summary(rt) ) # summaries
+    print( sum(rt < 0, na.rm = T) / length(rt) ) # negative response times
+    print( t( sapply( unique(id), function(i) table( response[signal == 1 & id == i] ) ) ) ) # success rates in STOP-SIGNAL trials (should be approximately 50/50 conditional on subject)
+    Sys.sleep(wait) # stop for a second so that we can check it.
+    
+  }
 )
 
-# some sanity checks
-summary(d0$data$rt) # summaries
-sum(d0$data$rt < 0, na.rm = T) / nrow(d0$data) # negative response times
-t( sapply( unique(d0$data$id), function(i) table( subset(d0$data, signal == 1 & id == i)$response ) ) ) # success rates in STOP-SIGNAL trials (should be approximately 50/50 conditional on subject)
-sanity_plot(d0$data) # GO response times should be generally slower than STOP-RESPOND response times
 
-# loop through d0 data and fit the same individual model to each participant
-# extract number of participants
-k <- length( unique(d0$data$id) )
+# ---- INDIVIDUAL MODELS FITTING ----
 
-# skip of fit
-if (skip == F) {
+indi_fit <- function(data, model) {
+  
+  # extract number of participants
+  k <- length( unique(data$id) )
   
   # fit it
-  fit0 <- lapply(
+  fit <- lapply(
     
     X = set_names(x = 1:k),
     FUN = function(i) {
       
       current <- i # save current participant name for tracking
       
+      # FOR USE OUT OF THE TARGETS PIPELINE
       # show a plot with current data being fitted highlighted 
-      plot(
-        
-        sanity_plot(d0$data) + geom_rect(
-          
-          data = d0$data %>% mutate( subject = factor(paste0("Subject #",id), levels = unique( paste0("Subject #",id) ), ordered = T) ) %>% filter(id == current),
-          aes(colour = subject, fill = "red"),
-          xmin = -Inf, xmax = Inf,
-          ymin = -Inf, ymax = Inf,
-          alpha = 0.002,
-          linewidth = 2.5
-          
-        )
-        
-      )
+      #plot(
+      #  
+      #  sanity_plot(data) + geom_rect(
+      #    
+      #    data = data %>% mutate( subject = factor(paste0("Subject #",id), levels = unique( paste0("Subject #",id) ), ordered = T) ) %>% filter(id == current),
+      #    aes(colour = subject, fill = "red"),
+      #    xmin = -Inf, xmax = Inf,
+      #    ymin = -Inf, ymax = Inf,
+      #    alpha = 0.002,
+      #    linewidth = 2.5
+      #    
+      #  )
+      #  
+      #)
       
       # prepare data
-      dGO <- subset(d0$data, id == i) %>% filter( signal == 0 )
-      dSR <- subset(d0$data, id == i) %>% filter( signal == 1 & !is.na(rt) )
-      dNA <- subset(d0$data, id == i) %>% filter( signal == 1 & is.na(rt) )
+      dGO <- subset(data, id == i) %>% filter( signal == 0 )
+      dSR <- subset(data, id == i) %>% filter( signal == 1 & !is.na(rt) )
+      dNA <- subset(data, id == i) %>% filter( signal == 1 & is.na(rt) )
       
       # input file
       dlist <- list(
@@ -131,39 +103,53 @@ if (skip == F) {
         
       )
       
+      # prepare a folder for the outcome
+      folder <- here( "_sims", paste0("indi_fake_subject_no_",i) )
+      if( dir.exists(folder) ) unlink(folder)
+      dir.create(folder)
+      
       # fitting proper
-      return( mod$sample(data = dlist, chains = 4, save_warmup = T, init = ifun, seed = 87542) )
+      return( model$sample(
+        
+        data = dlist,
+        chains = 4,
+        save_warmup = T,
+        init = ifun,
+        seed = 87542,
+        output_dir = folder
+        
+      ) )
       
     }
+    
   )
   
-  # save the results for immediate use if needed/wanted
-  saveRDS( object = fit0, file = here("sims", "ExGaussian_base.rds") )
+  # return it
+  return(fit)
+
+}
+
+
+# ---- SHOW TRACE PLOTS ----
+
+show_trace <- function(fit) lapply(
   
-}
+  X = 1:length(fit),
+  FUN = function(i) mcmc_trace( fit[[i]]$draws(inc_warmup = T), n_warmup = 1e3 )
+
+)
 
 
-# plot trace plots, each for ca 3 s
-for (i in 1:k) {
+# ---- EXTRACT MODEL PARAMETERS ----
 
-  print( paste0("participant #",i) )
-  print( mcmc_trace( fit0[[i]]$draws(inc_warmup = T), n_warmup = 1e3 ) )
-  Sys.sleep(3)
-
-}
-
-
-## ---- RECOVERY CHECKS ----
-
-# prepare a data.frame with all parameter values (true and estimated)
-pars <- left_join(
+get_pars <- function(fit, truth, data) left_join(
   
   # models' posteriors
   x = lapply(
     
-    1:k, function(i) # loop through participants
+    1:length(fit), function(i) # loop through participants
       
-      fit0[[i]]$draws(format = "data.frame") %>%
+      fit[[i]]$draws(format = "data.frame") %>%
       select( starts_with("Int"), .chain, .iteration ) %>%
       mutate(ID = i, .before = 1)
     
@@ -178,7 +164,7 @@ pars <- left_join(
     pivot_longer(cols = contains("_"), values_to = "value", names_to = c("parameter", "type"), names_sep = "_"),
   
   # data-generating values
-  y = with( d0$parameters, lapply(
+  y = with( truth, lapply(
     
     1:k, function(i)
       
@@ -197,7 +183,7 @@ pars <- left_join(
       rownames_to_column("type") %>%
       mutate(ID = i, .before = 1)
     
-    )
+  )
   ) %>%
     
     do.call( rbind.data.frame, . ) %>%
@@ -209,7 +195,7 @@ pars <- left_join(
 ) %>% left_join(
   
   # add observed mean and SDs for the go trials
-  y = d0$data %>%
+  y = data %>%
     filter(signal == 0) %>%
     group_by(id) %>%
     summarise( mean_go = mean(rt), sd_go = sd(rt) ) %>%
@@ -222,18 +208,13 @@ pars <- left_join(
   
 )
 
-# check recovery of the parameters across participants
-reco_hist( data = subset(pars, ID %in% 1:8), quants = c("mean", "sd") )
-reco_hist( data = subset(pars, ID %in% 9:16), quants = c("mean", "sd") )
-reco_hist( data = subset(pars, ID %in% 17:24), quants = c("mean", "sd") )
 
-
-## ---- POSTERIOR PREDICTION ----
+# ---- POSTERIOR PREDICTION ----
 
 # extract a set of posterior predictions
-ppred <- lapply(
+ppred_calc <- function(fit, pars) lapply(
   
-  1:k, # one for each participant
+  1:length(fit), # one for each participant
   function(i) {
     
     # extract posterior draws for subject i
@@ -251,34 +232,29 @@ ppred <- lapply(
         print( paste0("Participant #",i,", sample #",j) )
         
         return( with(
-            
-            df,
-            ssrt_data_sim(
-              alpha_go = c(mu_go[j], 0),
-              alpha_stop = c(mu_stop[j], 0),
-              beta_go = c(sigma_go[j], 0),
-              beta_stop = c(sigma_stop[j], 0),
-              gamma_go = c(lambda_go[j], 0),
-              gamma_stop = c(lambda_stop[j], 0),
-              tau_go = c(0, 0),
-              tau_stop = c(0, 0),
-              zeta_go = c(0, 0),
-              zeta_stop = c(0, 0),
-              epsilon_go = c(0, 0),
-              epsilon_stop = c(0, 0),
-              N = 1,
-              df = subset(d0$data, id == i) %>% mutate(id = 1, rt = NA) %>% select(-ends_with("FT"), -winner)
-            )$data$rt
           
-          ) )
+          df,
+          ssrt_data_sim(
+            alpha_go = c(mu_go[j], 0),
+            alpha_stop = c(mu_stop[j], 0),
+            beta_go = c(sigma_go[j], 0),
+            beta_stop = c(sigma_stop[j], 0),
+            gamma_go = c(lambda_go[j], 0),
+            gamma_stop = c(lambda_stop[j], 0),
+            tau_go = c(0, 0),
+            tau_stop = c(0, 0),
+            zeta_go = c(0, 0),
+            zeta_stop = c(0, 0),
+            epsilon_go = c(0, 0),
+            epsilon_stop = c(0, 0),
+            N = 1,
+            df = subset(d0$data, id == i) %>% mutate(id = 1, rt = NA) %>% select(-ends_with("FT"), -winner)
+          )$data$rt
+          
+        ) )
       }
       
     ) %>% t()
-
+    
   }
 )
-
-# print posterior predictions (density overlaps)
-# in the signal-respond trials, it makes little sense to "align" NAs between observed data and posterior predictions
-ppc_density(d0$data, preds = ppred, cols = c("red4","blue4","lightpink2","skyblue2"), ncols = 4, ndrws = 50)
-

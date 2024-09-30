@@ -1,10 +1,11 @@
-# In this script I prepare all in-house functions used thoughout the project.
+# In this script I prepare in-house functions used for plotting throught the project
 
 library(tidyverse)
 library(ggh4x)
 
 
 # ---- SANITY CHECK PLOT ----
+
 sanity_plot <- function(data) data %>%
   
   # some formatting shinanigans
@@ -31,6 +32,7 @@ sanity_plot <- function(data) data %>%
 
 
 # ---- PARAMETERS RECOVERY ----
+
 reco_hist <- function(
     
   data, # parameter estimates to be evaluated against a ground truth
@@ -72,6 +74,7 @@ reco_hist <- function(
 
 
 # ---- DENSITY OVERLAY OF POSTERIOR PREDICTIONS ----
+
 ppc_density <- function(data, preds, cols, ncols = 4, ndrws = 50) lapply(
   
   1:length(preds),

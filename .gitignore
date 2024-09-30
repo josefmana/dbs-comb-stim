@@ -2,7 +2,7 @@
 mods/**/*.rds
 **/.DS_Store
 
-# ignore all _ folders but include _ files
+# ignore all _* folders but not _* files
 _*/
 
 ##################
