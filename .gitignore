@@ -5,9 +5,6 @@ mods/**/*.rds
 # ignore all _* folders
 _*/
 
-# ignore the pipeline figure (will be used for ReadMe though)
-pipeline.jpeg
-
 ##################
 # R-specific files
 .Rprofile
