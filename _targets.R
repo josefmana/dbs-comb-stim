@@ -32,22 +32,11 @@ list(
   tar_target(mod0, cmdstan_model(stan_model) ), # read the model
   
   # simulate data 
-  tar_target(
-    name = d0,
-    command = ssrt_data_sim(
-
-      tau_go = c(-Inf,0), tau_stop = c(-Inf,0),
-      zeta_go = c(-Inf,0), zeta_stop = c(-Inf,0),
-      epsilon_go = c(-Inf,0), epsilon_stop = c(-Inf,0),
-      seeds = list(pars = 201:218, data = c(GO = 68, STOP = 69) ),
-      N = 24
- 
-    )
-  ),
+  tar_target(d0, ssrt_data_sim( N = 8, multilevel = F, S = 57:74) ),
   
   # run some sanity checks
   tar_target( san_check, fake_data_sums(d0$data, 5) ),
-  tar_target( san_plot, sanity_plot(d0$data) ),
+  tar_target( san_plot, sanity_plot(d0$data, ncols = 2) ),
   
   # fit the models
   tar_target( fit0, indi_fit(d0$data, mod0) ),
@@ -57,12 +46,11 @@ list(
   
   # recovery checks
   tar_target( pars0, get_pars(fit0, d0$parameters, d0$data) ),
-  tar_target( recoplot1, reco_hist( data = subset(pars0, ID %in% 1:8), quants = c("mean", "sd") ) ),
-  tar_target( recoplot2, reco_hist( data = subset(pars0, ID %in% 9:16), quants = c("mean", "sd") ) ),
-  tar_target( recoplot3, reco_hist( data = subset(pars0, ID %in% 17:24), quants = c("mean", "sd") ) ),
+  tar_target( recoplot_locscale, reco_hist( data = pars0, quants = c("mean", "sd") ) ),
+  tar_target( recoplot_paramets, reco_hist( data = pars0, quants = c("mu", "sigma", "lambda"), tit = "Parameters estimates" ) ),
   
   # posterior predictive check
   tar_target( ppred, ppred_calc(fit0, pars0, d0$data) ),
-  tar_target( ppc_dens, ppc_density(d0$data, ppred, cols = c("red4","blue4","lightpink2","skyblue2"), ncols = 4, ndrws = 50) )
+  tar_target( ppc_dens, ppc_density(d0$data, ppred, cols = c("red4","blue4","lightpink2","skyblue2"), ncols = 2, ndrws = 50) )
 
 )

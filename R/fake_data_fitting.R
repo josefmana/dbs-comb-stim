@@ -27,12 +27,12 @@
 
 ifun <- function() list(
   
-  Int_mu_go_0 = runif(1,-2,0),
-  Int_sigma_go_0 = runif(1,-2,0),
-  Int_lambda_go_0 = runif(1,-2,0),
-  Int_mu_stop_0 = runif(1,-2,0),
-  Int_sigma_stop_0 = runif(1,-2,0),
-  Int_lambda_stop_0 = runif(1,-2,0)
+  Int_mu_go = runif(1,-2,0),
+  Int_sigma_go = runif(1,-2,0),
+  Int_lambda_go = runif(1,-2,0),
+  Int_mu_stop = runif(1,-2,0),
+  Int_sigma_stop = runif(1,-2,0),
+  Int_lambda_stop = runif(1,-2,0)
   
 )
 
@@ -93,13 +93,16 @@ indi_fit <- function(data, model) {
       dlist <- list(
         
         # data
-        Y_0_go = dGO$rt, N_0_go = nrow(dGO),
-        Y_0_sr = dSR$rt, N_0_sr = nrow(dSR), SSD_0_sr = dSR$ssd,
-        N_0_na = nrow(dNA), SSD_0_na = dNA$ssd,
+        Y_go = dGO$rt, N_go = nrow(dGO),
+        Y_sr = dSR$rt, N_sr = nrow(dSR), SSD_sr = dSR$ssd,
+        N_na = nrow(dNA), SSD_na = dNA$ssd,
         
         # priors
-        mu_go_0_p = c(-0.4,0.2), sigma_go_0_p = c(-2.0,0.2), lambda_go_0_p = c(-2.0,0.2),
-        mu_stop_0_p = c(-1.0,0.2), sigma_stop_0_p = c(-2.0,0.2), lambda_stop_0_p = c(-2.0,0.2)
+        prior_muGO = c(-0.4,0.2), prior_sigmaGO = c(-2.0,0.2), prior_lambdaGO = c(-2.0,0.2),
+        prior_muSTOP = c(-1.0,0.2), prior_sigmaSTOP = c(-2.0,0.2), prior_lambdaSTOP = c(-2.0,0.2),
+        
+        # integrand & debugging specification
+        integration_mode = 1, integrand_variant = 0, debug_integrand = 1
         
       )
       
@@ -130,7 +133,7 @@ indi_fit <- function(data, model) {
 }
 
 
-# ---- SHOW TRACE PLOTS ----
+# ---- TRACE PLOTS ----
 
 show_trace <- function(fit) lapply(
   
@@ -156,7 +159,7 @@ get_pars <- function(fit, truth, data) left_join(
   ) %>%
     
     do.call( rbind.data.frame, . ) %>%
-    rename_with( ~ sub( "Int_", "", sub("_0", "", .x) ) ) %>%
+    rename_with( ~ sub( "Int_", "", .x) ) %>%
     mutate( # add estimated mean and SD from the parameters
       mean_go = exp(mu_go), sd_go = sqrt( exp(sigma_go)^2 + exp(lambda_go)^2 ),
       mean_stop = exp(mu_stop), sd_stop = sqrt( exp(sigma_stop)^2 + exp(lambda_stop)^2 )
@@ -183,11 +186,11 @@ get_pars <- function(fit, truth, data) left_join(
       rownames_to_column("type") %>%
       mutate(ID = i, .before = 1)
     
-  )
+    )
   ) %>%
     
     do.call( rbind.data.frame, . ) %>%
-    pivot_longer( cols = -any_of( c("ID", "type") ), names_to = "parameter", values_to = "true_value" ),
+    pivot_longer(cols = -any_of( c("ID", "type") ), names_to = "parameter", values_to = "true_value"),
   
   # glue estimated and true parameters to a single file
   by = c("ID","type","parameter")
@@ -235,20 +238,14 @@ ppred_calc <- function(fit, pars, data) lapply(
           
           df,
           ssrt_data_sim(
-            alpha_go = c(mu_go[j], 0),
-            alpha_stop = c(mu_stop[j], 0),
-            beta_go = c(sigma_go[j], 0),
-            beta_stop = c(sigma_stop[j], 0),
-            gamma_go = c(lambda_go[j], 0),
-            gamma_stop = c(lambda_stop[j], 0),
-            tau_go = c(0, 0),
-            tau_stop = c(0, 0),
-            zeta_go = c(0, 0),
-            zeta_stop = c(0, 0),
-            epsilon_go = c(0, 0),
-            epsilon_stop = c(0, 0),
+            alpha_go = c(mu_go[j], 0), alpha_stop = c(mu_stop[j], 0),
+            beta_go = c(sigma_go[j], 0), beta_stop = c(sigma_stop[j], 0),
+            gamma_go = c(lambda_go[j], 0), gamma_stop = c(lambda_stop[j], 0),
+            tau_go = c(-Inf, 0), tau_stop = c(-Inf, 0),
+            zeta_go = c(-Inf, 0), zeta_stop = c(-Inf, 0),
+            epsilon_go = c(-Inf, 0), epsilon_stop = c(-Inf, 0),
             N = 1,
-            df = subset(data, id == i) %>% mutate(id = 1, rt = NA) %>% select(-ends_with("FT"), -winner)
+            df = subset(data, id == i) %>% mutate(id = 1, rt = NA)
           )$data$rt
           
         ) )

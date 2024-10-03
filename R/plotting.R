@@ -3,7 +3,7 @@
 
 # ---- SANITY CHECK PLOT ----
 
-sanity_plot <- function(data) data %>%
+sanity_plot <- function(data, ncols = 2) data %>%
   
   # some formatting shinanigans
   filter( complete.cases(rt) ) %>%
@@ -13,7 +13,7 @@ sanity_plot <- function(data) data %>%
   ggplot() +
   aes( x = rt, linetype = as.character(signal) ) +
   geom_density(linewidth = .68) +
-  facet_wrap(~ subject, ncol = 3) +
+  facet_wrap(~ subject, ncol = ncols) +
   labs(
     title = "Observed data distributions",
     subtitle = "GO response times (solid) should be generally slower than STOP-RESPOND response times (dashed).",
@@ -35,7 +35,7 @@ reco_hist <- function(
   data, # parameter estimates to be evaluated against a ground truth
   col = c(go = "red", stop = "blue", hist = "grey68"), # colours denoting true data generating values
   quants = c("mean", "sd"), # quantities of interest, will be printed in the listed order
-  tit = "Mean/Scale structure" # plot title
+  tit = "Location/Scale structure" # plot title
   
 ) {
   

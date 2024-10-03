@@ -14,9 +14,10 @@ ssrt_data_sim <- function(
   zeta_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer sigma parameter
   epsilon_go = c(-2.0,0.2), # subject-level standard deviation of the go racer lambda parameter
   epsilon_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer lambda parameter
+  multilevel = F, # use multivelvel specification?
   N = 8, # number of subjects
   K = c(216,72), # number of go/stop-signal trials
-  seeds = list(pars = NULL, data = c(GO = NA, STOP = NA) ), # set of seeds, list with either a vector of length 18 or NA for parameters ('pars') and separate seeds for go and stop finish time distributions ('data')
+  S = NULL, # seeds, either a vector of length 18 or NULL for parameters
   df = NULL # a fixed data set for posterior predictive checks
   
 ) {
@@ -24,13 +25,12 @@ ssrt_data_sim <- function(
   ## SAMPLE EXGAUSSIAN PARAMETERS ----
   
   # prepare seeds
-  if ( is.null(seeds$pars) ) S_pars <- sample(x = 1:1e9, size = 18, replace = F) else S_pars <- seeds$pars # parameters
-  S_dats <- sapply(names(seeds$data), function(i) ifelse( is.na(seeds$data[i]), sample(1:1e9, 1), seeds$data[i] ), USE.NAMES = F) # data
+  if ( is.null(S) ) S <- sample(x = 1:1e9, size = 18, replace = F)
   
   # make a matrix of it
   S <- matrix(
 
-    data = S_pars,
+    data = S,
     ncol = 2,
     byrow = T,
     dimnames = list(
@@ -40,21 +40,27 @@ ssrt_data_sim <- function(
 
   )
   
+  # How many intercepts to draw from the commont distribution?
+  # Single intercept per type for a multilevel specification (where variability in parameters comes from subject-level variance)
+  # N different intercepts for a single-level specification (where varibility in parameters comes from prior only)
+  n <- ifelse( multilevel == T, 1, N)
+  
   # sample global intercepts
-  set.seed(S["alpha","GO"]); alphaGO <- rnorm( 1, alpha_go[1], alpha_go[2] )
-  set.seed(S["alpha","STOP"]); alphaSTOP <- rnorm( 1, alpha_stop[1], alpha_stop[2] )
-  set.seed(S["beta","GO"]); betaGO <- rnorm( 1, beta_go[1], beta_go[2] )
-  set.seed(S["beta","STOP"]); betaSTOP <- rnorm( 1, beta_stop[1], beta_stop[2] )
-  set.seed(S["gamma","GO"]); gammaGO <- rnorm( 1, gamma_go[1], gamma_go[2] )
-  set.seed(S["gamma","STOP"]); gammaSTOP <- rnorm( 1, gamma_stop[1], gamma_stop[2] )
+  set.seed(S["alpha","GO"]); alphaGO <- rnorm( n, alpha_go[1], alpha_go[2] )
+  set.seed(S["alpha","STOP"]); alphaSTOP <- rnorm( n, alpha_stop[1], alpha_stop[2] )
+  set.seed(S["beta","GO"]); betaGO <- rnorm( n, beta_go[1], beta_go[2] )
+  set.seed(S["beta","STOP"]); betaSTOP <- rnorm( n, beta_stop[1], beta_stop[2] )
+  set.seed(S["gamma","GO"]); gammaGO <- rnorm( n, gamma_go[1], gamma_go[2] )
+  set.seed(S["gamma","STOP"]); gammaSTOP <- rnorm( n, gamma_stop[1], gamma_stop[2] )
+  
   
   # sample subject-level standard deviations
-  set.seed(S["tau","GO"]); tauGO <- exp( rnorm( 1, tau_go[1], tau_go[2] ) )
-  set.seed(S["tau","STOP"]); tauSTOP <- exp( rnorm( 1, tau_stop[1], tau_stop[2] ) )
-  set.seed(S["zeta","GO"]); zetaGO <- exp( rnorm( 1, zeta_go[1], zeta_go[2] ) )
-  set.seed(S["zeta","STOP"]); zetaSTOP <- exp( rnorm( 1, zeta_stop[1], zeta_stop[2] ) )
-  set.seed(S["epsilon","GO"]); epsilonGO <- exp( rnorm( 1, epsilon_go[1], epsilon_go[2] ) )
-  set.seed(S["epsilon","STOP"]); epsilonSTOP <- exp( rnorm( 1, epsilon_stop[1], epsilon_stop[2] ) )
+  set.seed(S["tau","GO"]); tauGO <- ifelse(multilevel == T, exp( rnorm( 1, tau_go[1], tau_go[2] ) ), 0)
+  set.seed(S["tau","STOP"]); tauSTOP <- ifelse(multilevel == T, exp( rnorm( 1, tau_stop[1], tau_stop[2] ) ), 0)
+  set.seed(S["zeta","GO"]); zetaGO <- ifelse(multilevel == T, exp( rnorm( 1, zeta_go[1], zeta_go[2] ) ), 0)
+  set.seed(S["zeta","STOP"]); zetaSTOP <- ifelse(multilevel == T, exp( rnorm( 1, zeta_stop[1], zeta_stop[2] ) ), 0)
+  set.seed(S["epsilon","GO"]); epsilonGO <- ifelse(multilevel == T, exp( rnorm( 1, epsilon_go[1], epsilon_go[2] ) ), 0)
+  set.seed(S["epsilon","STOP"]); epsilonSTOP <- ifelse(multilevel == T, exp( rnorm( 1, epsilon_stop[1], epsilon_stop[2] ) ), 0)
   
   # sample standardised subject-level effects
   # if only one participant is generated, ignore the subject level part by setting these to zero
@@ -129,64 +135,72 @@ ssrt_data_sim <- function(
   
   ### ---- FILL-IN RESPONSES ----
   
-  # pre-allocate GO and STOP finish times to save time
-  out <- cbind(
-    
-    out,
-    do.call(
-      
-      rbind, lapply(
-        
-        X = unique(out[ ,"id"]),
-        FUN = function(i) {
-          
-          # sample finishing times
-          set.seed(S_dats["GO"]); goFT <- rexgaussian( nrow(out[ out[ ,"id"] == i, ]), muGO[i], sigmaGO[i], lambdaGO[i] ) # GO racer
-          set.seed(S_dats["STOP"]); stopFT <- rexgaussian( nrow(out[ out[ ,"id"] == i, ]), muSTOP[i], sigmaSTOP[i], lambdaSTOP[i] ) # STOP racer
-          
-          # return a matrix
-          return( cbind(goFT = goFT, stopFT = stopFT, winner = NA) )
-          
-        }
-      )
-    )
-  )
-  
-  # decide winner of each SIGNAL trial and fill-in SSDs following a staircase procedure accordingly
+  # loop through all the rows of the output matrix
   for ( i in 1:nrow(out) ) {
     
-    if( out[i, "signal"] == 0 ) next
-    else {
+    #### ---- GO TRIALS ----
+    
+    if( out[i, "signal"] == 0 ) {
+      
+      out[i, "response"] <- 1 # assume correct response
+      out[i, "rt"] <- rexgaussian(1, muGO[out[i,"id"]], sigmaGO[out[i,"id"]], lambdaGO[out[i,"id"]] ) # sample response time
+      
+    #### ---- STOP TRIALS ----
+      
+    } else if( out[i, "signal"] == 1 ) {
       
       # set-up initial SSD if it is subject's first stop-signal trial
       if( out[i, "trial"] == min( signal_trials[ , out[i,"id"]] ) ) SSD <- .3
       
-      # calculate quantities of interest
-      out[i, "ssd"] <- SSD # write down SSD for this trial
-      out[i, "winner"] <- ifelse( (out[i, "stopFT"] + out[i, "ssd"]) < out[i, "goFT"], 1, 0) # decide a winner: 1 = STOP, 0 = GO (need to be numeric in a matrix)
+      # write down SSD for this trial
+      out[i, "ssd"] <- SSD
       
-      # update SSD
-      SSD <- ifelse(out[i, "winner"] == 1, SSD + .05, SSD - .05)
+      # sample finishing times of GO and STOP racers
+      goFT <- rexgaussian(1, muGO[out[i,"id"]], sigmaGO[out[i,"id"]], lambdaGO[out[i,"id"]] )
+      stopFT <- SSD + rexgaussian(1, muSTOP[out[i,"id"]], sigmaSTOP[out[i,"id"]], lambdaSTOP[out[i,"id"]] )
       
+      # fill-in the rest depending on the winner
+      # if GO racer wins
+      if (goFT < stopFT) {
+        
+        out[i, "response"] <- 1 # incorrect response is recorded
+        out[i, "rt"] <- goFT # with GO racer finishing time as the response time
+        SSD <- SSD - .05 # make it easier during the next trial
+        
+        # else if STOP racer wins
+      } else if (stopFT < goFT) {
+        
+        out[i, "response"] <- 0 # correct non-response with no response time is recorded
+        SSD <- SSD + .05 # make it harder during the next trial
+      }
     }
+    
   }
-  
-  # fill-in responses and their times
-  out[ , "response"] <- ifelse(out[ , "signal"] == 1, ifelse(out[ , "winner"] == 1, 0, 1), 1)
-  out[ , "rt"] <- ifelse( out[ , "signal"] == 0, out[ , "goFT"], ifelse(out[ , "winner"] == 1, NA, out[ , "stopFT"] ) )
 
 
   ## PREPARE THE OUTPUT ----
   
-  # ExGaussian racers' parameters
-  pars <- data.frame(
+  if (multilevel == T) {
+    
+    pars <- data.frame(
+      
+      id = c( rep(NA,4), rep(1:N, 2) ),
+      type = c( rep( c("global intercept","subject-level variability"), 2 ), rep("varying effect", 2*N) ),
+      racer = c( rep("go", 2), rep("stop", 2), rep("go", N), rep("stop", N) ),
+      mu = c(alphaGO, tauGO, alphaSTOP, tauSTOP, xGO, xSTOP),
+      sigma = c(betaGO, zetaGO, betaSTOP, zetaSTOP, yGO, ySTOP),
+      lambda = c(gammaGO, epsilonGO, gammaSTOP, epsilonSTOP, zGO, zSTOP)
+      
+    )
+    
+  } else pars <- data.frame(
     
     id = c( rep(NA,4), rep(1:N, 2) ),
     type = c( rep( c("global intercept","subject-level variability"), 2 ), rep("varying effect", 2*N) ),
     racer = c( rep("go", 2), rep("stop", 2), rep("go", N), rep("stop", N) ),
-    mu = c(alphaGO, tauGO, alphaSTOP, tauSTOP, xGO, xSTOP),
-    sigma = c(betaGO, zetaGO, betaSTOP, zetaSTOP, yGO, ySTOP),
-    lambda = c(gammaGO, epsilonGO, gammaSTOP, epsilonSTOP, zGO, zSTOP)
+    mu = c( rep(c(0,1),2), alphaGO, alphaSTOP ),
+    sigma = c( rep(c(0,1),2), betaGO, betaSTOP ),
+    lambda = c( rep(c(0,1),2), gammaGO, gammaSTOP )
     
   )
   
@@ -194,7 +208,7 @@ ssrt_data_sim <- function(
   dats <- as.data.frame(out)
   
   # return list of parameters and data
-  return( list( seeds = list(parameters = S_pars, data = S_dats), parameters = pars, data = dats ) )
+  return( list( seeds = S, parameters = pars, data = dats ) )
   
 }
 
