@@ -39,7 +39,7 @@ ifun <- function() list(
 
 # ---- SANITY CHECKS ----
 
-fake_data_sums <- function(data, wait) with(
+data_summary <- function(data, wait) with(
   
   data, {
     
@@ -54,7 +54,7 @@ fake_data_sums <- function(data, wait) with(
 
 # ---- INDIVIDUAL MODELS FITTING ----
 
-indi_fit <- function(data, model) {
+fit_individually <- function(data, model) {
   
   # extract number of participants
   k <- length( unique(data$id) )
@@ -145,7 +145,7 @@ show_trace <- function(fit) lapply(
 
 # ---- EXTRACT MODEL PARAMETERS ----
 
-get_pars <- function(fit, truth, data) left_join(
+extract_parameters <- function(fit, truth, data) left_join(
   
   # models' posteriors
   x = lapply(
@@ -215,7 +215,7 @@ get_pars <- function(fit, truth, data) left_join(
 # ---- POSTERIOR PREDICTION ----
 
 # extract a set of posterior predictions
-ppred_calc <- function(fit, pars, data) lapply(
+compute_predictions <- function(fit, pars, data) lapply(
   
   1:length(fit), # one for each participant
   function(i) {
@@ -237,7 +237,7 @@ ppred_calc <- function(fit, pars, data) lapply(
         return( with(
           
           df,
-          ssrt_data_sim(
+          ssrt_data_simulate(
             alpha_go = c(mu_go[j], 0), alpha_stop = c(mu_stop[j], 0),
             beta_go = c(sigma_go[j], 0), beta_stop = c(sigma_stop[j], 0),
             gamma_go = c(lambda_go[j], 0), gamma_stop = c(lambda_stop[j], 0),
@@ -245,7 +245,7 @@ ppred_calc <- function(fit, pars, data) lapply(
             zeta_go = c(-Inf, 0), zeta_stop = c(-Inf, 0),
             epsilon_go = c(-Inf, 0), epsilon_stop = c(-Inf, 0),
             N = 1,
-            df = subset(data, id == i) %>% mutate(id = 1, rt = NA)
+            df = subset(data, id == i) %>% mutate(id = 1)
           )$data$rt
           
         ) )

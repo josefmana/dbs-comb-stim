@@ -3,7 +3,7 @@
 
 # ---- SANITY CHECK PLOT ----
 
-sanity_plot <- function(data, ncols = 2) data %>%
+response_times_plot <- function(data, ncols = 2) data %>%
   
   # some formatting shinanigans
   filter( complete.cases(rt) ) %>%
@@ -30,7 +30,7 @@ sanity_plot <- function(data, ncols = 2) data %>%
 
 # ---- PARAMETERS RECOVERY ----
 
-reco_hist <- function(
+recovery_plot <- function(
     
   data, # parameter estimates to be evaluated against a ground truth
   col = c(go = "red", stop = "blue", hist = "grey68"), # colours denoting true data generating values

@@ -5,11 +5,19 @@ The [renv](https://rstudio.github.io/renv/) package was used to create reproduci
 To set-up R environment for reproduction of our results, run:
 
 ```
-install.packages("renv")
+#install.packages("renv")
 renv::restore()
 ```
 
 The [targets](https://docs.ropensci.org/targets/) package was used to create a reproducible analysis pipeline.
+To run the analyses, use the following code:
+
+```
+#install.packages("targets")
+targets::tar_make()
+```
+
+
 The current pipeline looks as follows:
 
 ![](pipeline.jpeg)

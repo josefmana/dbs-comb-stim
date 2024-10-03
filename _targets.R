@@ -29,28 +29,28 @@ list(
   # Fake data simulation ----
   
   tar_target(stan_model, "ExGaussian_individual.stan", format = "file"), # the Stan model to be used
-  tar_target(mod0, cmdstan_model(stan_model) ), # read the model
+  tar_target(stat_model, cmdstan_model(stan_model) ), # read the model
   
   # simulate data 
-  tar_target(d0, ssrt_data_sim( N = 8, multilevel = F, S = 57:74) ),
+  tar_target(fake_data, ssrt_data_simulate(N = 8, multilevel = F, S = 49:66) ),
   
   # run some sanity checks
-  tar_target( san_check, fake_data_sums(d0$data, 5) ),
-  tar_target( san_plot, sanity_plot(d0$data, ncols = 2) ),
+  tar_target( sanity_check, data_summary(fake_data$data, 5) ),
+  tar_target( sanity_plot, response_times_plot(fake_data$data, ncols = 2) ),
   
   # fit the models
-  tar_target( fit0, indi_fit(d0$data, mod0) ),
+  tar_target( fit, fit_individually(fake_data$data, stat_model) ),
   
   # check convergence
-  tar_target( trace0, show_trace(fit0) ),
+  tar_target( trace_plots, show_trace(fit) ),
   
   # recovery checks
-  tar_target( pars0, get_pars(fit0, d0$parameters, d0$data) ),
-  tar_target( recoplot_locscale, reco_hist( data = pars0, quants = c("mean", "sd") ) ),
-  tar_target( recoplot_paramets, reco_hist( data = pars0, quants = c("mu", "sigma", "lambda"), tit = "Parameters estimates" ) ),
+  tar_target( quantities, extract_parameters(fit, fake_data$parameters, fake_data$data) ),
+  tar_target( recovery_plot_means, recovery_plot( data = quantities, quants = c("mean", "sd") ) ),
+  tar_target( recovery_plot_parameters, recovery_plot( data = quantities, quants = c("mu", "sigma", "lambda"), tit = "Parameters estimates" ) ),
   
   # posterior predictive check
-  tar_target( ppred, ppred_calc(fit0, pars0, d0$data) ),
-  tar_target( ppc_dens, ppc_density(d0$data, ppred, cols = c("red4","blue4","lightpink2","skyblue2"), ncols = 2, ndrws = 50) )
+  tar_target( posterior_predictions, compute_predictions(fit, quantities, fake_data$data) ),
+  tar_target( ppc_density_plot, ppc_density(fake_data$data, posterior_predictions, cols = c("red4","blue4","lightpink2","skyblue2"), ncols = 2, ndrws = 50) )
 
 )

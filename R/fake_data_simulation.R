@@ -1,6 +1,6 @@
 # This script defines a function that simulates SSRT data based on two racers model.
 
-ssrt_data_sim <- function(
+ssrt_data_simulate <- function(
   
   alpha_go = c(-0.4,0.2), # global intercept of the go racer mu parameter
   alpha_stop = c(-1.0,0.2), # global intercept of the stop racer mu parameter
@@ -103,10 +103,10 @@ ssrt_data_sim <- function(
         matrix(
           data = NA,
           nrow = sum(K),
-          ncol = 6,
+          ncol = 3,
           dimnames = list(
             trial = NULL,
-            variable = c("trial","id","signal","ssd","response","rt")
+            variable = c("trial","id","signal")
           )
         )
       
@@ -127,7 +127,7 @@ ssrt_data_sim <- function(
     
   } else {
     
-    out <- df
+    out <- df[ , c("trial", "id", "signal") ]
     signal_trials <- sapply( 1:N, function(i) which( subset(df, id == i)$signal == 1) )
     
   }
@@ -135,47 +135,54 @@ ssrt_data_sim <- function(
   
   ### ---- FILL-IN RESPONSES ----
   
-  # loop through all the rows of the output matrix
-  for ( i in 1:nrow(out) ) {
+  out <- cbind(
     
-    #### ---- GO TRIALS ----
-    
-    if( out[i, "signal"] == 0 ) {
+    out,
+    sapply(
       
-      out[i, "response"] <- 1 # assume correct response
-      out[i, "rt"] <- rexgaussian(1, muGO[out[i,"id"]], sigmaGO[out[i,"id"]], lambdaGO[out[i,"id"]] ) # sample response time
-      
-    #### ---- STOP TRIALS ----
-      
-    } else if( out[i, "signal"] == 1 ) {
-      
-      # set-up initial SSD if it is subject's first stop-signal trial
-      if( out[i, "trial"] == min( signal_trials[ , out[i,"id"]] ) ) SSD <- .3
-      
-      # write down SSD for this trial
-      out[i, "ssd"] <- SSD
-      
-      # sample finishing times of GO and STOP racers
-      goFT <- rexgaussian(1, muGO[out[i,"id"]], sigmaGO[out[i,"id"]], lambdaGO[out[i,"id"]] )
-      stopFT <- SSD + rexgaussian(1, muSTOP[out[i,"id"]], sigmaSTOP[out[i,"id"]], lambdaSTOP[out[i,"id"]] )
-      
-      # fill-in the rest depending on the winner
-      # if GO racer wins
-      if (goFT < stopFT) {
+      1:nrow(out), function(i) {
         
-        out[i, "response"] <- 1 # incorrect response is recorded
-        out[i, "rt"] <- goFT # with GO racer finishing time as the response time
-        SSD <- SSD - .05 # make it easier during the next trial
+        #### ---- GO TRIALS ----
         
-        # else if STOP racer wins
-      } else if (stopFT < goFT) {
+        if( out[i, "signal"] == 0 ) {
+          
+          response <- 1 # assume correct response
+          rt <- rexgaussian(1, muGO[out[i,"id"]], sigmaGO[out[i,"id"]], lambdaGO[out[i,"id"]] ) # sample response time
+          SSD <- NA
+          
+          #### ---- STOP TRIALS ----
+        } else if( out[i, "signal"] == 1 ) {
+          
+          # set-up initial SSD if it is subject's first stop-signal trial
+          if( out[i, "trial"] == min( signal_trials[ , out[i,"id"]] ) ) SSD <- .3 else SSD <- SSD_next
+          
+          # sample finishing times of GO and STOP racers
+          goFT <- rexgaussian(1, muGO[out[i,"id"]], sigmaGO[out[i,"id"]], lambdaGO[out[i,"id"]] )
+          stopFT <- SSD + rexgaussian(1, muSTOP[out[i,"id"]], sigmaSTOP[out[i,"id"]], lambdaSTOP[out[i,"id"]] )
+          
+          
+          # fill-in the rest depending on the winner
+          # if GO racer wins
+          if (goFT < stopFT) {
+            
+            response <- 1 # incorrect response is recorded
+            rt <- goFT # with GO racer finishing time as the response time
+            SSD_next <<- SSD - .05 # make it easier during the next trial
+            
+            # else if STOP racer wins
+          } else if (stopFT < goFT) {
+            
+            response <- 0 # correct non-response with no response time is recorded
+            rt <- NA
+            SSD_next <<- SSD + .05 # make it harder during the next trial
+          }
+        }
         
-        out[i, "response"] <- 0 # correct non-response with no response time is recorded
-        SSD <- SSD + .05 # make it harder during the next trial
+        return( c(response = response, rt = rt, ssd = SSD) )
       }
-    }
+    ) %>% t()
     
-  }
+  )
 
 
   ## PREPARE THE OUTPUT ----
