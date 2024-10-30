@@ -1,4 +1,4 @@
-# In this script I prepare in-house functions used for plotting throught the project
+# In this script I prepare in-house functions used for plotting throughout the project
 
 
 # ---- SANITY CHECK PLOT ----
