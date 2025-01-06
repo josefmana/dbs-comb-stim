@@ -1,8 +1,9 @@
+#
 # In this script I prepare in-house functions used for plotting throughout the project
+#
 
-
+#
 # ---- SANITY CHECK PLOT ----
-
 response_times_plot <- function(data, ncols = 2) data %>%
   
   # some formatting shinanigans
@@ -27,9 +28,8 @@ response_times_plot <- function(data, ncols = 2) data %>%
     plot.subtitle = element_text(hjust = .5)
   )
 
-
+#
 # ---- PARAMETERS RECOVERY ----
-
 recovery_plot <- function(
     
   data, # parameter estimates to be evaluated against a ground truth
@@ -69,9 +69,8 @@ recovery_plot <- function(
   
 }
 
-
+#
 # ---- DENSITY OVERLAY OF POSTERIOR PREDICTIONS ----
-
 ppc_density <- function(data, preds, cols, ncols = 4, ndrws = 50) lapply(
   
   1:length(preds),

@@ -1,3 +1,4 @@
+#
 # This script is used to simulate SSRT data from the assumed data-generating process
 # and fit Stan models with the same structure on the data
 #
@@ -21,10 +22,10 @@
 #
 # Since the code runs for quite some time, it is possible to read results generated on my laptop instead of running
 # the analysis on yours (and the fitting section marked below by 'can be skipped' may be skipped):
+#
 
-
+#
 # ---- MANUAL INITIAL VALUES SETTINGS ----
-
 ifun <- function() list(
   
   Int_mu_go = runif(1,-2,0),
@@ -36,9 +37,8 @@ ifun <- function() list(
   
 )
 
-
+#
 # ---- SANITY CHECKS ----
-
 data_summary <- function(data, wait) with(
   
   data, {
@@ -51,9 +51,8 @@ data_summary <- function(data, wait) with(
   }
 )
 
-
+#
 # ---- INDIVIDUAL MODELS FITTING ----
-
 fit_individually <- function(data, model) {
   
   # extract number of participants
@@ -132,9 +131,8 @@ fit_individually <- function(data, model) {
 
 }
 
-
+#
 # ---- TRACE PLOTS ----
-
 show_trace <- function(fit) lapply(
   
   X = 1:length(fit),
@@ -142,9 +140,8 @@ show_trace <- function(fit) lapply(
 
 )
 
-
+#
 # ---- EXTRACT MODEL PARAMETERS ----
-
 extract_parameters <- function(fit, truth, data) left_join(
   
   # models' posteriors
@@ -211,10 +208,8 @@ extract_parameters <- function(fit, truth, data) left_join(
   
 )
 
-
+#
 # ---- POSTERIOR PREDICTION ----
-
-# extract a set of posterior predictions
 compute_predictions <- function(fit, pars, data) lapply(
   
   1:length(fit), # one for each participant

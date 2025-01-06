@@ -1,4 +1,4 @@
-# Combined Stimulation in DBS Patients with PD for Affecting Cognition (dbs-comb-stim)
+# Combined Stimulation in DBS Patients with PD for Affecting Cognition (dbs-combstim)
 
 Evaluating the effect mid frequency intervention to ventral ('associational') region of STN via DBS combined with high
 frequency dorsal stimulation on cognition in PD. Causal assumptions of the system under study are summarised in the

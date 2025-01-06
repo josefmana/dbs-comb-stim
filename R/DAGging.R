@@ -1,4 +1,6 @@
+#
 # This script contains functions for causal assumption representation.
+#
 
 make_dag <- function(plot = T, save = T) {
   

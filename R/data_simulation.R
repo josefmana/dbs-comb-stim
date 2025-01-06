@@ -1,24 +1,26 @@
+#
 # This script defines a function that simulates SSRT data based on two racers model.
+#
 
 ssrt_data_simulate <- function(
   
-  alpha_go = c(-0.4,0.2), # global intercept of the go racer mu parameter
-  alpha_stop = c(-1.0,0.2), # global intercept of the stop racer mu parameter
-  beta_go = c(-2.0,0.2), # global intercept of the go racer sigma parameter
-  beta_stop = c(-2.0,0.2), # global intercept of the stop racer sigma parameter
-  gamma_go = c(-2.0,0.2), # global intercept of the go racer lambda parameter
-  gamma_stop = c(-2.0,0.2), # global intercept of the stop racer lambda parameter
-  tau_go = c(-2.0,0.2), # subject-level standard deviation of the go racer mu parameter
-  tau_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer mu parameter
-  zeta_go = c(-2.0,0.2), # subject-level standard deviation of the go racer sigma parameter
-  zeta_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer sigma parameter
-  epsilon_go = c(-2.0,0.2), # subject-level standard deviation of the go racer lambda parameter
+  alpha_go = c(-0.4,0.2),     # global intercept of the go racer mu parameter
+  alpha_stop = c(-1.0,0.2),   # global intercept of the stop racer mu parameter
+  beta_go = c(-2.0,0.2),      # global intercept of the go racer sigma parameter
+  beta_stop = c(-2.0,0.2),    # global intercept of the stop racer sigma parameter
+  gamma_go = c(-2.0,0.2),     # global intercept of the go racer lambda parameter
+  gamma_stop = c(-2.0,0.2),   # global intercept of the stop racer lambda parameter
+  tau_go = c(-2.0,0.2),       # subject-level standard deviation of the go racer mu parameter
+  tau_stop = c(-2.0,0.2),     # subject-level standard deviation of the stop racer mu parameter
+  zeta_go = c(-2.0,0.2),      # subject-level standard deviation of the go racer sigma parameter
+  zeta_stop = c(-2.0,0.2),    # subject-level standard deviation of the stop racer sigma parameter
+  epsilon_go = c(-2.0,0.2),   # subject-level standard deviation of the go racer lambda parameter
   epsilon_stop = c(-2.0,0.2), # subject-level standard deviation of the stop racer lambda parameter
-  multilevel = F, # use multivelvel specification?
-  N = 8, # number of subjects
-  K = c(216,72), # number of go/stop-signal trials
-  S = NULL, # seeds, either a vector of length 18 or NULL for parameters
-  df = NULL # a fixed data set for posterior predictive checks
+  multilevel = F,             # use multilevel specification?
+  N = 8,                      # number of subjects
+  K = c(216,72),              # number of go/stop-signal trials
+  S = NULL,                   # seeds, either a vector of length 18 or NULL for parameters
+  df = NULL                   # a fixed data set for posterior predictive checks
   
 ) {
   

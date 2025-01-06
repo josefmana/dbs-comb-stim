@@ -1,22 +1,25 @@
+#
 # This is a script running targets pipeline of the project.
+#
 
 # Load packages required to define the pipeline:
 library(targets)
-# library(tarchetypes) # Load other packages as needed.
 
 # Set target options:
-tar_option_set( packages = c(
-
-  "here", # for path listing
-  "ggdag", # for causal diagrams
-  "ggraph", # for graphs 
-  "brms", # for rexgaussian()
-  "tidyverse", # for data wrangling
-  "cmdstanr", # for model fitting
-  "bayesplot", # for MCMC-specific plotting
-  "ggh4x" # for special facet_wrapping
-
-) )
+tar_option_set(
+  packages = c(
+    
+    "here",      # for path listing
+    "ggdag",     # for causal diagrams
+    "ggraph",    # for graphs 
+    "brms",      # for rexgaussian()
+    "tidyverse", # for data wrangling
+    "cmdstanr",  # for model fitting
+    "bayesplot", # for MCMC-specific plotting
+    "ggh4x"      # for special facet_wrapping
+    
+  )
+)
 
 # Load all in-house functions:
 tar_source()
@@ -28,29 +31,80 @@ options( mc.cores = parallel::detectCores() )
 # List the targets:
 list(
   
-  # CAUSAL ASSUMPTIONS ----
-  tar_target( DAG, make_dag(plot = F, save = T) ),
+  ## CAUSAL ASSUMPTIONS ----
+  tar_target(
+    name = DAG, # directed acyclic graph representing causal assumptions
+    command = make_dag(plot = F, save = T)
+  ),
   
-  # MODEL(S) ----
-  tar_target( stan_model, "ExGaussian_individual.stan", format = "file" ), # the Stan model to be used
-  tar_target( stat_model, cmdstan_model(stan_model) ), # read the model
+  ## MODEL(S) ----
+  tar_target(
+    name = stan_model, # the Stan model to be used
+    command = here("ExGaussian_individual.stan"),
+    format = "file"
+  ),
+  tar_target(
+    name = stat_model, # read the model
+    command = cmdstan_model(stan_model)
+  ),
   
   # FAKE DATA ----
-  tar_target( fake_data, ssrt_data_simulate(N = 8, multilevel = F, S = 49:66) ), # simulate
-  tar_target( sanity_check, data_summary(fake_data$data, 5) ), # check for negative response times
-  tar_target( sanity_plot, response_times_plot(fake_data$data, ncols = 2) ), # check observed data distributions
+  tar_target(
+    name = fake_data, # simulate
+    command = ssrt_data_simulate(N = 8, multilevel = F, S = 49:66)
+  ),
+  tar_target(
+    name = sanity_check, # check for negative response times
+    command = data_summary(fake_data$data, 5)
+  ),
+  tar_target(
+    name = sanity_plot, # check observed data distributions
+    command = response_times_plot(fake_data$data, ncols = 2)
+  ),
   
-    ## ---- model fitting ----
-    tar_target( fit, fit_individually(fake_data$data, stat_model) ),
-    tar_target( trace_plots, show_trace(fit) ),
+    ### ---- model fitting ----
+    tar_target(
+      name = fit,
+      command = fit_individually(fake_data$data, stat_model)
+    ),
+    tar_target(
+      name = trace_plots,
+      command = show_trace(fit)
+    ),
   
-    ## ---- recovery checks ----
-    tar_target( quantities, extract_parameters(fit, fake_data$parameters, fake_data$data) ),
-    tar_target( recovery_plot_means, recovery_plot( data = quantities, quants = c("mean", "sd") ) ),
-    tar_target( recovery_plot_parameters, recovery_plot( data = quantities, quants = c("mu", "sigma", "lambda"), tit = "Parameters estimates" ) ),
+    ### ---- recovery checks ----
+    tar_target(
+      name = quantities,
+      command = extract_parameters(fit, fake_data$parameters, fake_data$data)
+    ),
+    tar_target(
+      name = recovery_plot_means,
+      command = recovery_plot( data = quantities, quants = c("mean", "sd") )
+    ),
+    tar_target(
+      name = recovery_plot_parameters,
+      command = recovery_plot( data = quantities, quants = c("mu", "sigma", "lambda"), tit = "Parameters estimates" )
+    ),
   
-    ## ---- posterior predictive check ----
-    tar_target( posterior_predictions, compute_predictions(fit, quantities, fake_data$data) ),
-    tar_target( ppc_density_plot, ppc_density(fake_data$data, posterior_predictions, cols = c("red4","blue4","lightpink2","skyblue2"), ncols = 2, ndrws = 50) )
-
+    ### ---- posterior predictive check ----
+    tar_target(
+      name = posterior_predictions,
+      command = compute_predictions(fit, quantities, fake_data$data)
+    ),
+    tar_target(
+      name = ppc_density_plot,
+      command = ppc_density(fake_data$data, posterior_predictions, cols = c("red4","blue4","lightpink2","skyblue2"), ncols = 2, ndrws = 50)
+    ),
+  
+  ## COUNTERBALANCING ----
+  tar_target(
+    name = counterbalancing_path, # path to counterbalancing file
+    command = here("_raw","rand","counterkey.csv"),
+    format = "file"
+  ),
+  tar_target(
+    name = counterbalancing_file, # read the file for counterbalancing
+    command = read_delim(file = counterbalancing_path, delim = ";", escape_double = F, trim_ws = T)
+  )
+  
 )
