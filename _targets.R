@@ -98,13 +98,17 @@ list(
   
   ## COUNTERBALANCING ----
   tar_target(
-    name = counterbalancing_path, # path to counterbalancing file
+    name = original_counterbalancing_path, # path to counterbalancing file
     command = here("_raw","rand","counterkey.csv"),
     format = "file"
   ),
   tar_target(
-    name = counterbalancing_file, # read the file for counterbalancing
-    command = read_delim(file = counterbalancing_path, delim = ";", escape_double = F, trim_ws = T)
+    name = original_counterbalancing_file, # read the file for counterbalancing
+    command = read_delim(file = original_counterbalancing_path, delim = ";", escape_double = F, trim_ws = T)
+  ),
+  tar_target(
+    name = retest_counterbalancing_options, # generate valid options of counterbalancing in re-test
+    command = generate_counterbalancing(.file = original_counterbalancing_file)
   )
   
 )
