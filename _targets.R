@@ -14,6 +14,7 @@ tar_option_set(
     "ggraph",    # for graphs 
     "brms",      # for rexgaussian()
     "tidyverse", # for data wrangling
+    "janitor",   # for 
     "cmdstanr",  # for model fitting
     "bayesplot", # for MCMC-specific plotting
     "ggh4x"      # for special facet_wrapping
@@ -34,7 +35,7 @@ list(
   ## CAUSAL ASSUMPTIONS ----
   tar_target(
     name = DAG, # directed acyclic graph representing causal assumptions
-    command = make_dag(plot = F, save = T)
+    command = make_dag(plot = T, save = T)
   ),
   
   ## MODEL(S) ----
@@ -109,6 +110,33 @@ list(
   tar_target(
     name = retest_counterbalancing_options, # generate valid options of counterbalancing in re-test
     command = generate_counterbalancing(.file = original_counterbalancing_file)
+  ),
+  
+  ## DATA IMPORT ----
+  tar_target(
+    name = data_paths, # paths to single patients' data
+    command = data_paths(folder = "ssrt")
+  ),
+  tar_target(
+    name = counterbalancing_data, # counterbalancing information
+    command = extract_counterbalancing(.file = original_counterbalancing_file)
+  ),
+  tar_target(
+    name = demographic_file, # demographic data file
+    command = here("_raw","demo","redcap_data.csv"),
+    format = "file"
+  ),
+  tar_target(
+    name = demographic_data, # extract demographic characteristics of included patients
+    command = get_data(.paths = data_paths, .cb = counterbalancing_data, .demofile = demographic_file, type = "demography")
+  ),
+  tar_target(
+    name = ssrt_raw_data, # extract SSRT data (raw)
+    command = get_data(.paths = data_paths, .cb = counterbalancing_data, .demofile = demographic_file, type = "raw")
+  ),
+  tar_target(
+    name = ssrt_labelled_data, # extract SSRT data (labelled)
+    command = get_data(.paths = data_paths, .cb = counterbalancing_data, .demofile = demographic_file, type = "labelled")
   )
   
 )
