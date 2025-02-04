@@ -2,19 +2,63 @@
 # This script contains functions for causal assumption representation.
 #
 
+#
+# DRAW A DAG ----
 make_dag <- function(plot = T, save = T) {
   
   # prepare names
   nms <- data.frame(
     
-    label = c("Frequency", "Individual", "Contact\nLocation", "Motor\nSpeed", "Processing\nSpeed", "Response\nInhibition", "Finger\nTapping", "Response\nTime", "Trial\nType"),
-    name = c("Freq", "Indi", "CLoc", "MS", "PS", "RI", "FT", "RT", "TT"),
-    x = rep(1:3, 3),
-    y = c( 3, 4, 3, rep(2, 3), rep(1, 3) )
+    label = c(
+      "Frequency",
+      "Individual",
+      "Contact\nLocation",
+      "Speech\nProduction",
+      "Processing\nSpeed",
+      "Response\nInhibition",
+      "Affect",
+      "Words",
+      "Response\nTime",
+      "STAI",
+      "Probe[VF]",
+      "Mode[VF]",
+      "Trial\nType[SSRT]",
+      "Version[STAI]",
+      "Item[STAI]"
+    ),
+    name  = c(
+      "Freq",
+      "Indi",
+      "CLoc",
+      "SP",
+      "PS",
+      "RI",
+      "Aff",
+      "VF",
+      "RT",
+      "STAI",
+      "Probe",
+      "Mode",
+      "TT",
+      "X",
+      "Item"
+    ),
+    x = c(
+      2:4,                                   # Individual & experimental manipulations
+      seq(from = 1, to = 5, length.out = 4), # Latent variables
+      2:4,                                   # Observed variables
+      1:5                                    # Observed variables' structure
+    ),
+    y = c(
+      4, 5, 4,   # Individual & experimental manipulations
+      rep(3, 4), # Latent variables
+      rep(2, 3), # Observed variables
+      rep(1, 5)  # Observed variables' structure
+    )
     
   ) %>% mutate(
     
-    latent = if_else(name %in% c("MS","PS","RI") , T, F),
+    latent = if_else(name %in% c("SP", "PS", "RI", "Aff") , T, F),
     colour = if_else(latent == T, "black", "white")
     
   )
@@ -25,12 +69,19 @@ make_dag <- function(plot = T, save = T) {
   # prepare the DAG
   dag <- dagify(
     
-    RT ~ MS + PS + RI + TT,
-    FT ~ MS,
-    MS ~ Freq + CLoc + Indi,
-    PS ~ Freq + CLoc + Indi,
-    RI ~ Freq + CLoc + Indi,
     CLoc ~ Indi,
+    
+    SP  ~ Freq + CLoc + Indi,
+    PS  ~ Freq + CLoc + Indi,
+    RI  ~ Freq + CLoc + Indi,
+    Aff ~ Freq + CLoc + Indi,
+    
+    VF   ~ PS + SP + Mode + Probe,
+    RT   ~ PS + RI + TT,
+    STAI ~ Aff + X + Item + Indi,
+    
+    Probe ~ Mode,
+    Item  ~ X,
     
     latent = lvs,
     coords = nms[ , c("name","x","y")]
@@ -39,7 +90,23 @@ make_dag <- function(plot = T, save = T) {
     
     tidy_dagitty() %>%
     arrange(name) %>%
-    mutate( latent = if_else(name %in% lvs, "1", "0") )
+    mutate(
+      latent = if_else(
+        condition = name %in% lvs,
+        true      = "1",
+        false     = "0"
+      ),
+      curve  = if_else(
+        condition = is.na(direction),
+        true      = NA,
+        false     = case_when(
+          name == "Indi" & to == "STAI" ~ -0.24,
+          name == "Indi" & to == "SP"   ~ -0.33,
+          name == "Indi" & to == "Aff"  ~  0.33,
+          .default = 0
+        )
+      )
+    )
   
   # plot the DAG
   dagplt <- dag %>%
@@ -48,7 +115,11 @@ make_dag <- function(plot = T, save = T) {
     aes(x = x, y = y, xend = xend, yend = yend, colour = latent) +
     
     geom_dag_point(size = 20, fill = "white", shape = 21, stroke = 1.1) +
-    geom_dag_edges(arrow_directed = grid::arrow(length = grid::unit(13, "pt"), type = "open"), edge_width = .89) +
+    geom_dag_edges_arc(
+      curvature  = na.omit(dag$data$curve),
+      arrow      = grid::arrow(length = grid::unit(13, "pt"), type = "open"),
+      edge_width = .89
+    ) +
     scale_colour_manual( values = c("white", "black") ) +
     geom_dag_text(
       label = arrange(nms, name)$name,
@@ -60,9 +131,8 @@ make_dag <- function(plot = T, save = T) {
     theme(legend.position = "none")
   
   # save & return it
-  if(save == T) ggsave(plot = dagplt, filename = here("DAG.jpg"), dpi = 300, width = 7, height = 7)
+  if(save == T) ggsave(plot = dagplt, filename = here("DAG.jpg"), dpi = 300, width = 9, height = 11)
   if(plot == T) return(dagplt) else return(dag)
-  
 
 }
 
