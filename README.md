@@ -12,18 +12,6 @@ Speed (latent), RI = Response Inhibition (latent), FT = Finger Tapping, RT = Res
 
 ## Research Pipeline
 
-![](pipeline.jpeg)
-
-The [renv](https://rstudio.github.io/renv/) package was used to create reproducible environment for the project and
-the [targets](https://docs.ropensci.org/targets/) package was used to create a reproducible analysis pipeline.
-
-To set-up R environment for reproduction of our results, run:
-
-```
-#install.packages("renv")
-renv::restore()
-```
-
 To run the analyses, use the following code:
 
 ```
